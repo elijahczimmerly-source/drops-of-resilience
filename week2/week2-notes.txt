@@ -1,0 +1,30 @@
+**bias correction methods often rely on**
+
+\-the stationarity-of-bias assumption — the idea that the bias learned in the historical period stays constant into the future <- no fix
+
+\-the spatial-uniformity assumption — the idea that climate change will happen approximately uniformly over a GCM sized grid cell <- can fix! But do we have to? Iowa is flat
+
+
+
+**Why we do interpolation (it's not really not a gap in exploration): The boundary problem**
+
+Let's say you don't interpolate, and instead you just try to bias correct the GCM output laid across the finer grid. You're going to be left with arbitrary discontinuities between the cells where the edges of the GCM cells used to be. You could argue that certain bias correction methods would deal with this more "naturally" but the interpolation is actually fairly low risk when it comes to adding artificial information based on hard rules. While it seems like you're just smoothing it out arbitrarily and artificially, you're correcting a very predictable error, so you're less likely to introduce error in the process.
+
+
+
+**post-correction consistency problems**:
+
+Multivariate consistency - maybe not a problem if bias correction is done multivariately
+
+Spatial coherence across cells - the correlated noise (FFT-based) is a partial attempt at this
+
+Temporal structure: not addressed anywhere — this might be a genuine gap
+
+
+
+
+
+
+
+
+

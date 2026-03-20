@@ -1,0 +1,5 @@
+xarray>=2024.1
+netCDF4>=1.6
+numpy>=1.24
+matplotlib>=3.7
+dask[array]

@@ -1,0 +1,13 @@
+**Priorities**:
+
+1\. verify that averaging extremes doesn't converge to an average of averages, even over a long period of time.
+
+2\. Compare: bias correction first to spatial downscaling first
+
+3\. Stochastic noise: test empirically whether or not it brings the data closer to reality and if it could disrupt things for WEPP
+
+4\. find/develop and test a bias correction method that takes terrain into account rather than assuming spatial uniformity. Is Iowa too flat for it to matter?
+
+5\. explore post-correction consistency problems
+
+6\. 
