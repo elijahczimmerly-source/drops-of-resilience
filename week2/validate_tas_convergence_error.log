@@ -1,55 +1,24 @@
 Traceback (most recent call last):
-  File "c:\Users\elija\drops-of-resilience\week2\validate_tas_convergence.py", line 210, in <module>
+  File "C:\drops-of-resilience\week2\validate_tas_convergence.py", line 220, in <module>
     main()
-  File "c:\Users\elija\drops-of-resilience\week2\validate_tas_convergence.py", line 123, in main
-    overall_mean_of_midpoints = float(mean_midpoint.mean())
-                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\common.py", line 158, in __float__
-    return float(self.values)
-                 ^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\dataarray.py", line 798, in values
-    return self.variable.values
-           ^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\variable.py", line 556, in values
-    return _as_array_or_item(self._data)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\variable.py", line 336, in _as_array_or_item
-    data = np.asarray(data)
-           ^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\dask\array\core.py", line 1718, in __array__
-    x = self.compute()
-        ^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\dask\base.py", line 377, in compute
-    (result,) = compute(self, traverse=False, **kwargs)
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\dask\base.py", line 685, in compute
-    results = schedule(expr, keys, **kwargs)
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\indexing.py", line 686, in __array__
-    return np.asarray(self.get_duck_array(), dtype=dtype, copy=copy)
-                      ^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\indexing.py", line 691, in get_duck_array
-    return self.array.get_duck_array()
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\indexing.py", line 924, in get_duck_array
-    return self.array.get_duck_array()
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\coding\common.py", line 80, in get_duck_array
-    return self.func(self.array.get_duck_array())
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\indexing.py", line 764, in get_duck_array
-    array = self.array[self.key]
-            ~~~~~~~~~~^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\backends\netCDF4_.py", line 117, in __getitem__
-    return indexing.explicit_indexing_adapter(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\core\indexing.py", line 1156, in explicit_indexing_adapter
-    result = raw_indexing_method(raw_key.tuple)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\elija\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\backends\netCDF4_.py", line 130, in _getitem
-    array = getitem(original_array, key)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "src/netCDF4/_netCDF4.pyx", line 5108, in netCDF4._netCDF4.Variable.__getitem__
-  File "src/netCDF4/_netCDF4.pyx", line 6082, in netCDF4._netCDF4.Variable._get
-  File "src/netCDF4/_netCDF4.pyx", line 2165, in netCDF4._netCDF4._ensure_nc_success
-RuntimeError: NetCDF: HDF error
+  File "C:\drops-of-resilience\week2\validate_tas_convergence.py", line 116, in main
+    ds = load_tas_triple()
+         ^^^^^^^^^^^^^^^^^
+  File "C:\drops-of-resilience\week2\validate_tas_convergence.py", line 82, in load_tas_triple
+    ds_tas = xr.open_mfdataset(
+             ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Elijah\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\backends\api.py", line 1634, in open_mfdataset
+    ds = open_(p, **open_kwargs)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Elijah\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\backends\api.py", line 612, in open_dataset
+    ds = _dataset_from_backend_dataset(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Elijah\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\backends\api.py", line 307, in _dataset_from_backend_dataset
+    ds = _chunk_ds(
+         ^^^^^^^^^^
+  File "C:\Users\Elijah\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\backends\api.py", line 232, in _chunk_ds
+    chunkmanager = guess_chunkmanager(chunked_array_type)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Elijah\miniconda3\envs\drops-of-resilience\Lib\site-packages\xarray\namedarray\parallelcompat.py", line 116, in guess_chunkmanager
+    raise ImportError(
+ImportError: chunk manager 'dask' is not available. Please make sure 'dask' is installed and importable.
