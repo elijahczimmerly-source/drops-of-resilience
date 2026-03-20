@@ -1,0 +1,10 @@
+﻿name: drops-of-resilience
+channels:
+  - defaults
+dependencies:
+  - netcdf4
+  - xarray
+  - numpy
+  - python=3.11
+  - matplotlib
+prefix: C:\Users\elija\miniconda3\envs\drops-of-resilience
