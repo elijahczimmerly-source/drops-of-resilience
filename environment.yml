@@ -1,4 +1,4 @@
-﻿name: drops-of-resilience
+name: drops-of-resilience
 channels:
   - defaults
 dependencies:
@@ -7,4 +7,13 @@ dependencies:
   - numpy
   - python=3.11
   - matplotlib
+  - pandas
+  - pillow
+  - tqdm
+  - psutil
+  - pip:
+      - xarray-regrid
+      - rasterio
+      # test8_nn.py / test8_bilinear.py — CPU wheel; for CUDA see https://pytorch.org/get-started/locally/
+      - "torch --index-url https://download.pytorch.org/whl/cpu"
 prefix: C:\Users\elija\miniconda3\envs\drops-of-resilience

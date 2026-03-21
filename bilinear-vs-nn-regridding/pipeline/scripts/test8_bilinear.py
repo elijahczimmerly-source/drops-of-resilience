@@ -1,28 +1,55 @@
 """
 test8_bilinear.py  —  Stochastic Spatial Disaggregation (Post-OTBC)
-Bilinear regrid path: inputs were regridded from 100km->4km via bilinear interpolation.
-Output goes to: C:/drops-of-resilience/pipeline/output/bilinear/
+Regrid path: pr via conservative (mass-preserving); other vars bilinear — same as server regrid_to_gridmet.py.
+Output goes to: C:/drops-of-resilience/week3/pipeline/output/bilinear/
+  (Run regrid_to_gridmet_bilinear.py first to populate week3/pipeline/data/bilinear/.)
+
+Env: TEST8_SEED (default 42), TEST8_MAX_WORKERS (default 4). Use the same TEST8_SEED as test8_nn.py
+  to pair identical stochastic draws across regrid methods (inputs still differ).
 """
 
 import os
+
+# Intel OpenMP + PyTorch on Windows: avoid abort on duplicate libiomp5 (see Intel OMP note).
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 import sys
 import gc
+import hashlib
+import random
+import time
+import warnings
+
+import concurrent.futures
+from concurrent.futures import ProcessPoolExecutor
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.fft
-import concurrent.futures
-from concurrent.futures import ProcessPoolExecutor
-import time
-import warnings
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
+
+RUN_SEED = int(os.environ.get("TEST8_SEED", "42"))
+
+
+def _derive_worker_seed(base_seed: int, var_name: str) -> int:
+    d = hashlib.sha256(f"{base_seed}:{var_name}".encode()).digest()
+    return int.from_bytes(d[:4], "little") & 0x7FFFFFFF
+
+
+def _set_deterministic_seeds(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 # ---------------------------------------------------------
 # 1. CONFIGURATION
 # ---------------------------------------------------------
 VARS_INTERNAL = ["pr", "tasmax", "tasmin", "rsds", "wind", "huss"]
-MAX_WORKERS = 2
+MAX_WORKERS = int(os.environ.get("TEST8_MAX_WORKERS", "4"))
 
 DATES_ALL = pd.date_range("1981-01-01", "2014-12-31")
 TRAIN_MASK = (DATES_ALL <= "2005-12-31")
@@ -34,7 +61,7 @@ N_DAYS_EARLY = len(DATES_EARLY)
 DATES_FUTURE = pd.date_range("2015-01-01", "2100-12-31")
 N_DAYS_FUTURE = len(DATES_FUTURE)
 
-BASE_DIR       = r"C:\drops-of-resilience\pipeline\data\bilinear"
+BASE_DIR       = r"C:\drops-of-resilience\week3\pipeline\data\bilinear"
 F_INPUTS       = os.path.join(BASE_DIR, "cmip6_inputs_19810101-20141231.dat")
 F_TARGETS      = os.path.join(BASE_DIR, "gridmet_targets_19810101-20141231.dat")
 F_MASK         = os.path.join(BASE_DIR, "geo_mask.npy")
@@ -57,7 +84,7 @@ try:
 except FileNotFoundError:
     H, W = 84, 96
 
-OUT_DIR = r"C:\drops-of-resilience\pipeline\output\bilinear"
+OUT_DIR = r"C:\drops-of-resilience\week3\pipeline\output\bilinear"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -75,7 +102,8 @@ _T0 = time.time()
 
 def _ram_gb():
     try:
-        import psutil
+        import psutil  # optional; pip/conda package "psutil"
+
         return psutil.Process().memory_info().rss / 1024**3
     except ImportError:
         return -1.0
@@ -327,6 +355,7 @@ def run_downscale_loop(model, input_data, dates_arr, var_name, period_label, noi
 
 
 def process_variable(var_name):
+    _set_deterministic_seeds(_derive_worker_seed(RUN_SEED, var_name))
     v_idx = VARS_INTERNAL.index(var_name)
     inputs  = np.memmap(F_INPUTS,  dtype='float32', mode='r', shape=(N_DAYS, 6, H, W))
     targets = np.memmap(F_TARGETS, dtype='float32', mode='r', shape=(N_DAYS, 6, H, W))
@@ -388,10 +417,13 @@ def apply_schaake_shuffle_stack(output_stack, target_stack):
 # MAIN
 # =============================================================
 if __name__ == "__main__":
+    _set_deterministic_seeds(RUN_SEED)
     _T0 = time.time()
     log("=" * 65)
     log("BILINEAR PATH: Stochastic Spatial Disaggregation")
-    log(f"  Device: {device}  |  Workers: {MAX_WORKERS}  |  Grid: {H}x{W}")
+    log(
+        f"  Device: {device}  |  Workers: {MAX_WORKERS}  |  Grid: {H}x{W}  |  TEST8_SEED={RUN_SEED}"
+    )
     log(f"  Input dir:  {BASE_DIR}")
     log(f"  Output dir: {OUT_DIR}")
     log("=" * 65)

@@ -205,4 +205,53 @@ Not target
  
 Target is just there as a skeleton 
  
+Got it.
  
+Before I test the BC first/downscale first question, I wanted to see what would happen if I ran everything through test8 but replaced regrid_to_gridmet with a version that just uses nearest neighbor instead of bilinear interpolation. Whenever you get the chance, could you upload the Cropped_BC_MPI and Cropped_GridMET folders to modelsdev?
+ 
+Sure
+ 
+I'm out now..will do later
+ 
+Ofc, have a good Friday night
+ 
+You too.
+ 
+\\abe-cylo\modelsdev\Projects\WRC_DOR\Bias_Correction\Data
+ 
+has all bias corrected
+ 
+they are whole us. i will need to run the cropping script and save it. i will do that tomorrow and let you know
+ 
+so i have two versions of bias corrected: just bias corrected and then bias corrected + physics corrected
+ 
+which one do you want?
+ 
+there are cropping script in spatial downscaling folder if you want to run but if not i can do it for you too to save time. 
+ 
+let me know, i can crop all raw, bias corrected and bias corrected plus physics corrected. then we can downscle all and see which one works best
+ 
+Physics corrected is good. I can crop it myself, or you can crop it first either one. I still need the GridMET data from before the regridding (.nc, not .dat) also I think
+ 
+also please do not feel obliged to respond after working hours
+ 
+i will copy the gridmet
+ 
+that will be same CONUS
+ 
+Shah, Bhuwan P
+also please do not feel obliged to respond after working hours
+Same for you of course
+ 
+"\\abe-cylo\modelsdev\Projects\WRC_DOR\CONUS"
+ 
+will have gridmet
+ 
+it is going through right now. i will do the cropping tomorrow and ping you
+ 
+thank you for your hard work
+ 
+have a good night
+ 
+Thank you!
+

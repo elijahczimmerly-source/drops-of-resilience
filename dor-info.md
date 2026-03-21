@@ -7,6 +7,8 @@ This is a climate downscaling and bias correction research project. The goal is 
 **Server:** `\\abe-cylo\modelsdev\Projects\WRC_DOR\`
 **Note:** `\\abe-cylo\Cylo-bshah\` exists but is not accessible to Elijah.
 
+**Elijah's machine:** Ryzen 9800X3D, RX 7900 XTX, 32GB RAM, ethernet
+
 ---
 
 ## Current Research Priorities (from Priorities.txt)
@@ -46,6 +48,8 @@ This is a climate downscaling and bias correction research project. The goal is 
 **Important:** The ML/DL downscaling scripts (stage1_ml_downscaling.py, stage1_dl_super_resolution.py, etc.) were experimental and **ultimately failed/abandoned**. Bhuwan confirmed: "Pure stochastic method works better than ML hybrids."
 
 **OTBC** — appears in code comments and Bhuwan's messages. Likely stands for Optimal Transport Bias Correction (the MV-QDM multivariate method used in step 2). **Unconfirmed — verify with Bhuwan or Bias_Correction scripts.**
+
+**Physics correction** — a post-processing step applied after bias correction to enforce physical consistency between variables. Confirmed from `generate_physics_impact_table.py` and file naming. Specifically corrects: (1) huss values that exceed physically plausible bounds, and (2) tasmax/tasmin inconsistencies (e.g., tasmax < tasmin). Tracked via "Violation_Rate_%" (% of space-time points needing correction) and "Tmax_Consistency_Fixed_%". Applied to all BC methods, not just OTBC. Physics-corrected outputs are stored separately from the plain BC outputs and are named `*_physics_corrected.npz`. Bhuwan described these as "bias corrected + physics corrected" — the version used in the existing pipeline (referenced in test7 context as "OTBC bias corrected and physics corrected outputs").
 
 **On double BC:** test7 (not on server) used OTBC-corrected inputs AND then applied its own spatial climatology adjustment (using observed GridMET means) on top — two rounds of bias correction, causing overfitting. The double BC concern is specifically about applying a second observationally-derived correction, not about interpolation per se. test8 removes test7's extra correction.
 
@@ -195,16 +199,24 @@ Bhuwan said test8 uses "no interpolation" — this refers to not doing any *addi
 
 | Data | Location |
 |------|---------|
-| Regridded GridMET + CMIP6 inputs (84×96, .dat memmaps) | `\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\Data_Regrided_Gridmet\` |
-| Bias-corrected outputs (MV-QDM) | `\\{Bhuwan's IP}\cylo-bshah\Bias-Correction\BC-Outputs-MV-QDM-Fixed\` |
+| Regridded GridMET + CMIP6 inputs (84×96, .dat memmaps) — **output of regrid_to_gridmet.py** | `\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\Data_Regrided_Gridmet\` |
+| Bias-corrected outputs (MV-QDM, CONUS scale) | `\\{Bhuwan's IP}\cylo-bshah\Bias-Correction\BC-Outputs-MV-QDM-Fixed\` (not accessible) |
+| Physics-corrected BC outputs (CONUS scale, all 5 models, all BC methods) | `\\abe-cylo\modelsdev\Projects\WRC_DOR\Bias_Correction\Data\Physics_Corrected_[MODEL]\` — subfolders per BC method, files named `{var}_GROUP-..._METHOD-mv_otbc_..._physics_corrected.npz`. **Needs cropping before use.** |
 | Cropped bias-corrected for Iowa (MPI only) | `D:\Research\Projects\WRC\Cropped_BC_MPI\` (Bhuwan's local) |
 | Cropped bias-corrected for Iowa (all models) | `D:\Research\Projects\WRC\Cropped_BC_All_Models\` (Bhuwan's local) |
-| Cropped GridMET observations | `D:\Research\Projects\WRC\Cropped_GridMET\` (Bhuwan's local) |
+| Cropped GridMET observations (.nc, one file per variable per year) | `D:\Research\Projects\WRC\Cropped_GridMET\` (Bhuwan's local — not on server) |
 | Regridded all-model inputs (.npy per model/var/scenario) | `E:\SpatialDownscaling\Data_Regrided_Gridmet_All_Models\` (Bhuwan's local) |
 | Downscaling output (test6) | `E:\SpatialDownscaling\Data_Stochastic_Kriging_Final\` (Bhuwan's local) |
 | Downscaling output (test8) | `E:\SpatialDownscaling\Data_Stochastic_Kriging_Final_v8\` (Bhuwan's local) |
 | Wind effect static files | `E:\SpatialDownscaling\Data_WindEffect_Static\` (Bhuwan's local) |
 | 100km ScenarioMIP model data | `\\abe-cylo\modelsdev\Projects\WRC_DOR\100km-ScenarioMIP\` (5 GCM subfolders, NPZ files) |
+
+### On .dat files vs .nc files
+The `.dat` files on the server are the *output* of `regrid_to_gridmet.py` — the final processed format ready for test8 to memmap. They contain GCM inputs and GridMET targets already aligned on the same 4km grid, shape `(N_days, 6, 84, 96)`, float32. No coordinate metadata.
+
+The GridMET `.nc` files (one per variable per year, with lat/lon coordinate axes) are an *input* to `regrid_to_gridmet.py`, consumed on Bhuwan's machine and never uploaded to the server. We have the output but not the input.
+
+**Implication for NN comparison:** `regrid_to_gridmet_nn.py` needs the GridMET `.nc` files only to extract the target lat/lon coordinate arrays for xarray-regrid. A potential workaround is to reconstruct these arrays from known Iowa GridMET grid parameters (bounds ~39.5-44.5°N, -97.5 to -89.5°W, spacing ~0.0417°) rather than reading them from file — not yet attempted.
 
 ### GCM Models in 100km-ScenarioMIP
 - CMCC-ESM2
@@ -227,29 +239,39 @@ Bhuwan said test8 uses "no interpolation" — this refers to not doing any *addi
 
 ---
 
-## Bilinear vs Nearest-Neighbor Comparison (Active)
+## Bilinear vs Nearest-Neighbor Comparison (Complete)
 
-Testing whether bilinear interpolation in the regridding step produces better final downscaled output than nearest-neighbor. The hypothesis is that bilinear smooths the GCM cell boundary discontinuities and gives test8 cleaner input, leading to better metrics.
+**Question:** Does bilinear interpolation in the 100km→4km regridding step produce better final downscaled output than nearest-neighbor?
 
-**Setup:** Two parallel pipelines, identical test8 logic, differing only in how 100km→4km regridding was done.
+**Setup:** Two parallel pipelines using identical test8 logic, differing only in regridding method. Both used the same physics-corrected OTBC source data (`source_bc/`) for a fair comparison. Validated on 1981–2014 period, Iowa domain, MPI-ESM1-2-HR.
 
-| | Bilinear | Nearest-Neighbor |
-|--|---------|-----------------|
-| Input .dat files | Copied from server (`Data_Regrided_Gridmet`) | Must be generated by `regrid_to_gridmet_nn.py` |
-| Status | **Ready to run** | Blocked — needs `Cropped_BC_MPI/*.npz` and `Cropped_GridMET/*.nc` from Bhuwan |
-| Script | `test8_bilinear.py` | `test8_nn.py` |
-| Output | `pipeline/output/bilinear/` | `pipeline/output/nearest_neighbor/` |
-| Key output CSVs | `Bilinear_Table1_Pooled_Metrics.csv`, `Bilinear_Table2_PerCell_Metrics.csv` | `NN_Table1_Pooled_Metrics.csv`, `NN_Table2_PerCell_Metrics.csv` |
+**Report:** `C:\drops-of-resilience\week3\regrid_comparison_report.html`
 
-**What to compare:** KGE, RMSE, Ext99_Bias%, Lag1_Err across all 6 variables on the 2006-2014 test period.
+**Recommendation: Switch to NN for all variables.** NN makes fewer assumptions than bilinear (no smoothing of GCM cell boundaries), matches or outperforms bilinear on the metrics that matter, and has a modest computational advantage. The one area of uncertainty (pr Lag1) warrants follow-up with multiple seeds but is not a reason to retain bilinear.
 
-**What Bhuwan needs to provide:** `Cropped_BC_MPI/` and `Cropped_GridMET/` — both currently on his local D: drive, not on the server. Message sent asking him to upload to modelsdev.
+**Caveat for Bhuwan:** Bilinear has precedent in the literature for coarse-to-fine regridding and the switch requires justification in a paper. "Metrics were equivalent, NN makes fewer assumptions" is defensible but less intuitive to reviewers than bilinear.
+
+### Key findings by variable
+
+| Variable | Verdict | Reasoning |
+|----------|---------|-----------|
+| tasmax | Toss-up → NN | No meaningful differences on any metric. NN preferred for fewer assumptions. |
+| tasmin | Toss-up → NN | Same as tasmax. |
+| rsds | Toss-up → NN | Same as tasmax. |
+| huss | Toss-up → NN | Same as tasmax. |
+| wind | NN | NN reduces Ext99 Bias% by 2.1pp (meaningful). Bilinear wins RMSE by 1.3% but Ext99 is more important for wind applications. |
+| pr | NN (provisional) | Both methods score near-zero KGE — regridding is not the bottleneck. NN wins Lag1 Error by 9.5% (only meaningful result), but this should be verified across multiple seeds given pr's poor overall skill. |
+
+### Notes on interpretation
+- **KGE and Ext99 are independent**: low KGE (poor day-to-day skill) does not invalidate an Ext99 result. Ext99 measures distributional properties across the full record; a model can fail at tracking specific days but still capture extremes reasonably.
+- **Lag1 at near-zero KGE**: when KGE ≈ 0, model outputs are largely noise. A Lag1 win in this regime may not be structural — could flip with a different random seed.
+- All "meaningful" differences are small (≤2pp absolute, ≤10% relative). Regridding method is not the dominant source of error in this pipeline.
 
 ---
 
 ## Open Questions / To Investigate
 
-- **Bilinear vs NN comparison (Priority sub-task)**: Bilinear path ready to run. NN path blocked on Bhuwan uploading source files.
+- **Bilinear vs NN comparison (Priority sub-task)**: **Complete.** Recommendation: switch to NN. See report at `week3/regrid_comparison_report.html`. Pending: verify pr Lag1 result across multiple seeds.
 - **Priority #2 (BC-first vs downscale-first)**: Deferred until downscaling method is validated.
 - **Stochastic noise (Priority #3)**: Has not been empirically tested for WEPP compatibility.
 - **Terrain-based BC (Priority #4)**: Not yet explored; Bhuwan suggested looking into whether DEM/slope/aspect are used in any existing BC methods.

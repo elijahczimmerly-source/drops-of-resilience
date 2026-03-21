@@ -1,13 +1,11 @@
 **Priorities**:
 
-1\. Verify that interpolation = good
+1\. Compare: bias correction first to spatial downscaling first
 
-2\. Compare: bias correction first to spatial downscaling first
+2\. Stochastic noise: test empirically whether or not it brings the data closer to reality and if it could disrupt things for WEPP
 
-3\. Stochastic noise: test empirically whether or not it brings the data closer to reality and if it could disrupt things for WEPP
+3\. find/develop and test a bias correction method that takes terrain into account rather than assuming spatial uniformity. Is Iowa too flat for it to matter?
 
-4\. find/develop and test a bias correction method that takes terrain into account rather than assuming spatial uniformity. Is Iowa too flat for it to matter?
+4\. explore post-correction consistency problems
 
-5\. explore post-correction consistency problems
-
-6\. 
+ 

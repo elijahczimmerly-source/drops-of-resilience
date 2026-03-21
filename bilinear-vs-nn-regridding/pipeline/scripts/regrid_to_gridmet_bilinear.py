@@ -1,20 +1,28 @@
 """
-regrid_to_gridmet_nn.py — Regrid bias-corrected MPI GCM from 100km -> 4km using NEAREST-NEIGHBOR.
+regrid_to_gridmet_bilinear.py — Regrid bias-corrected MPI GCM from 100km -> 4km (local pipeline).
 
-Nearest-neighbor variant of regrid_to_gridmet.py. All variables (including pr) use nearest-neighbor
-assignment instead of bilinear/conservative. Output .dat files go to:
-  C:/drops-of-resilience/pipeline/data/nearest_neighbor/
+Matches server `regrid_to_gridmet.py` / dor-info.md: **conservative** for precipitation (ppt → pr)
+to preserve mass coarse→fine; **bilinear** (xarray-regrid `.linear`) for tasmax, tasmin, rsds, wind, huss.
+GridMET provides target lat/lon only (no observational interpolation in this step).
+
+Output .dat files go to:
+  C:/drops-of-resilience/week3/pipeline/data/bilinear/
 
 Source CMIP6 files expected in:
-  C:/drops-of-resilience/pipeline/source_bc/  (Cropped_*.npz from Bhuwan)
+  C:/drops-of-resilience/week3/pipeline/source_bc/  (produced by crop_bc_mpi_local.py)
 
 GridMET files (grid skeleton only) expected in:
-  D:/Research/Projects/WRC/Cropped_GridMET/   (already on local machine)
+  C:/drops-of-resilience/week3/pipeline/gridmet_cropped/  (produced by crop_gridmet_local.py)
+
+Memory: regridding runs in time chunks and streams to regridded_*.npy via memmap.
+  DOR_REGRID_TIME_CHUNK — days per chunk (default tuned for ~32GB RAM; lower if OOM).
+  DOR_MEMMAP_POOL_WORKERS — worker processes for .dat fill phase (default 4).
 """
 
 import sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
+import gc
 import os
 import xarray as xr
 import xarray_regrid  # registers .regrid accessor
@@ -32,13 +40,13 @@ import matplotlib.colors as mcolors
 # ==========================================
 # CONFIGURATION
 # ==========================================
-OUTPUT_DIR = r"C:\drops-of-resilience\pipeline\data\nearest_neighbor"
+OUTPUT_DIR = r"C:\drops-of-resilience\week3\pipeline\data\bilinear"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 PATHS = {
-    "CMIP6":   r"C:\drops-of-resilience\pipeline\source_bc",
+    "CMIP6":   r"C:\drops-of-resilience\week3\pipeline\source_bc",
     "PRISM":   r"D:\Research\Projects\WRC\Cropped_PRISM_800m",
-    "GridMET": r"D:\Research\Projects\WRC\Cropped_GridMET",
+    "GridMET": r"C:\drops-of-resilience\week3\pipeline\gridmet_cropped",
     "Geo":     r"D:\Research\Projects\WRC\Cropped_Geospatial",
     "WindEffect": r"E:\SpatialDownscaling\Data_WindEffect_Static"
 }
@@ -61,18 +69,23 @@ GRIDMET_NAME_MAP = {
     "sph":  "sph",
 }
 
-# All variables use nearest-neighbor
+# Match WRC_DOR regrid_to_gridmet.py: conservative PR (mass-preserving), bilinear elsewhere
 REGRID_METHOD = {
-    "ppt":  "nearest",
-    "tmax": "nearest",
-    "tmin": "nearest",
-    "srad": "nearest",
-    "vs":   "nearest",
-    "sph":  "nearest",
+    "ppt":  "conservative",
+    "tmax": "bilinear",
+    "tmin": "bilinear",
+    "srad": "bilinear",
+    "vs":   "bilinear",
+    "sph":  "bilinear",
 }
 
 HIST_START, HIST_END = "1981-01-01", "2014-12-31"
 FUT_START, FUT_END   = "2015-01-01", "2100-12-31"
+
+# ~32GB RAM: default 200 days/chunk ≈2.2× fewer iterations than 90; conservative PR chunks cost more than bilinear.
+# If memory spikes, set DOR_REGRID_TIME_CHUNK=120 (or 90).
+REGRID_TIME_CHUNK = int(os.environ.get("DOR_REGRID_TIME_CHUNK", "200"))
+MEMMAP_POOL_WORKERS = int(os.environ.get("DOR_MEMMAP_POOL_WORKERS", "4"))
 
 def get_days_count(start, end):
     return (pd.Timestamp(end) - pd.Timestamp(start)).days + 1
@@ -146,14 +159,109 @@ def robust_load_geo(var_hint):
 def regrid_var(src_da, dst_grid_ds, method):
     """
     Regrid a DataArray onto the destination grid using xarray-regrid.
-    method: 'conservative', 'nearest', or 'bilinear' (mapped to 'linear')
+    method: 'conservative' | 'nearest' | 'linear' | 'bilinear' (bilinear → .linear)
     """
     if method == "conservative":
         return src_da.regrid.conservative(dst_grid_ds, latitude_coord="lat")
-    elif method == "nearest":
+    if method == "nearest":
         return src_da.regrid.nearest(dst_grid_ds)
-    else:
-        return src_da.regrid.linear(dst_grid_ds)
+    # 'linear', 'bilinear', or legacy aliases
+    return src_da.regrid.linear(dst_grid_ds)
+
+
+def _method_label(tar_var):
+    m = REGRID_METHOD.get(tar_var, "bilinear")
+    return "conservative" if m == "conservative" else "bilinear"
+
+
+def _chunk_to_da(block, lat, lon, var_name, time_start, latlon_1d):
+    """block: (time, lat, lon) or (time, y, x); time coords = absolute indices into full series."""
+    nt = block.shape[0]
+    time_coord = np.arange(time_start, time_start + nt, dtype=np.int64)
+    if latlon_1d:
+        return xr.DataArray(
+            block,
+            dims=("time", "lat", "lon"),
+            coords={"time": time_coord, "lat": lat, "lon": lon},
+            name=var_name,
+        )
+    return xr.DataArray(
+        block,
+        dims=("time", "y", "x"),
+        coords={
+            "time": time_coord,
+            "lat": (("y", "x"), lat),
+            "lon": (("y", "x"), lon),
+        },
+        name=var_name,
+    )
+
+
+def regrid_cmip6_file_to_npy(fpath, out_npy_path, var_name, tar_var, dst_grid, method, chunk_days=None):
+    """
+    Stream regridded (time, dest_lat, dest_lon) to disk: one time-chunk at a time to cap peak RAM.
+    Returns output shape tuple.
+    """
+    if chunk_days is None:
+        chunk_days = max(1, REGRID_TIME_CHUNK)
+
+    with np.load(fpath, allow_pickle=True, mmap_mode="r") as npz:
+        lat = np.asarray(npz["lat"])
+        lon = np.asarray(npz["lon"])
+        lon = np.where(lon > 180, lon - 360, lon)
+        keys = [k for k in npz.keys() if k not in ["lat", "lon", "time", "years", "elevation"]]
+        key = var_name if var_name in npz else (keys[0] if keys else None)
+        if key is None:
+            raise ValueError(f"No data key in {fpath}")
+
+        data = npz[key]
+        if data.ndim != 3:
+            raise ValueError(f"Expected 3D (time, lat, lon) data in {fpath}, got shape {data.shape}")
+
+        latlon_1d = lat.ndim == 1 and lon.ndim == 1
+        if not latlon_1d and not (lat.ndim == 2 and lon.ndim == 2):
+            raise ValueError(f"Unexpected lat/lon shapes in {fpath}")
+
+        n_time = int(data.shape[0])
+        probe = np.asarray(data[0:1], dtype=np.float32)
+        da0 = _chunk_to_da(probe, lat, lon, var_name, 0, latlon_1d)
+        rg0 = regrid_var(da0, dst_grid, method)
+        _, h_out, w_out = rg0.values.shape
+        del da0, rg0
+        gc.collect()
+
+        mm = np.lib.format.open_memmap(
+            out_npy_path, mode="w+", dtype=np.float32, shape=(n_time, h_out, w_out)
+        )
+        try:
+            for start in range(0, n_time, chunk_days):
+                end = min(start + chunk_days, n_time)
+                block = np.asarray(data[start:end], dtype=np.float32)
+                da = _chunk_to_da(block, lat, lon, var_name, start, latlon_1d)
+                rg = regrid_var(da, dst_grid, method)
+                mm[start:end] = np.asarray(rg.values, dtype=np.float32)
+                del block, da, rg
+                gc.collect()
+            mm.flush()
+        finally:
+            del mm
+            gc.collect()
+
+    return (n_time, h_out, w_out)
+
+
+def _find_cmip6_npz(var_name, scenario):
+    pattern = "historical" if scenario == "historical" else "ssp585"
+    prefix = f"Cropped_{var_name}_"
+    files = [
+        f
+        for f in os.listdir(PATHS["CMIP6"])
+        if f.startswith(prefix) and pattern in f and f.endswith(".npz")
+    ]
+    if not files:
+        return None
+    return os.path.join(PATHS["CMIP6"], files[0])
+
 
 def robust_load_cmip6_da(var_name, scenario):
     pattern = "historical" if scenario == "historical" else "ssp585"
@@ -303,7 +411,9 @@ if __name__ == "__main__":
     if all_hist_exist and all_fut_exist:
         print("[SKIP] All regridded .npy files already exist.")
     else:
-        print("Regridding CMIP6 Variables (nearest-neighbor)...")
+        print(
+            f"Regridding CMIP6 (pr conservative, others bilinear; time_chunk={REGRID_TIME_CHUNK} days)..."
+        )
         for cmip_var, _, tar_var in VAR_MAP:
             h_path = os.path.join(OUTPUT_DIR, f"regridded_hist_{cmip_var}.npy")
             if os.path.exists(h_path):
@@ -311,12 +421,24 @@ if __name__ == "__main__":
                 arr = np.load(h_path, mmap_mode='r')
                 hist_regridded_paths[cmip_var] = (h_path, arr.shape)
             else:
-                da_h = robust_load_cmip6_da(cmip_var, "historical")
-                if da_h is not None:
-                    rg = regrid_var(da_h, dst_grid, REGRID_METHOD[tar_var])
-                    np.save(h_path, rg.values.astype('float32'))
-                    hist_regridded_paths[cmip_var] = (h_path, rg.shape)
-                    print(f"  [OK] {cmip_var} historical regridded (nearest-neighbor).")
+                f_npz = _find_cmip6_npz(cmip_var, "historical")
+                if f_npz is not None:
+                    try:
+                        shp = regrid_cmip6_file_to_npy(
+                            f_npz,
+                            h_path,
+                            cmip_var,
+                            tar_var,
+                            dst_grid,
+                            REGRID_METHOD[tar_var],
+                        )
+                        hist_regridded_paths[cmip_var] = (h_path, shp)
+                        print(
+                            f"  [OK] {cmip_var} historical regridded ({_method_label(tar_var)}) -> {shp}."
+                        )
+                    except Exception as e:
+                        print(f"  [Error] {cmip_var} historical regrid failed: {e}")
+                        hist_regridded_paths[cmip_var] = (None, None)
                 else:
                     hist_regridded_paths[cmip_var] = (None, None)
 
@@ -326,12 +448,24 @@ if __name__ == "__main__":
                 arr = np.load(f_path, mmap_mode='r')
                 fut_regridded_paths[cmip_var] = (f_path, arr.shape)
             else:
-                da_f = robust_load_cmip6_da(cmip_var, "ssp585")
-                if da_f is not None:
-                    rg = regrid_var(da_f, dst_grid, REGRID_METHOD[tar_var])
-                    np.save(f_path, rg.values.astype('float32'))
-                    fut_regridded_paths[cmip_var] = (f_path, arr.shape if 'arr' in dir() else rg.shape)
-                    print(f"  [OK] {cmip_var} future regridded (nearest-neighbor).")
+                f_npz = _find_cmip6_npz(cmip_var, "ssp585")
+                if f_npz is not None:
+                    try:
+                        shp = regrid_cmip6_file_to_npy(
+                            f_npz,
+                            f_path,
+                            cmip_var,
+                            tar_var,
+                            dst_grid,
+                            REGRID_METHOD[tar_var],
+                        )
+                        fut_regridded_paths[cmip_var] = (f_path, shp)
+                        print(
+                            f"  [OK] {cmip_var} future regridded ({_method_label(tar_var)}) -> {shp}."
+                        )
+                    except Exception as e:
+                        print(f"  [Error] {cmip_var} future regrid failed: {e}")
+                        fut_regridded_paths[cmip_var] = (None, None)
                 else:
                     fut_regridded_paths[cmip_var] = (None, None)
 
@@ -349,7 +483,7 @@ if __name__ == "__main__":
                             days_early, "1850-01-01", H, W))
         curr += chunk; c_date += pd.Timedelta(days=chunk)
     print(f"Processing Early Historical ({EARLY_START} to {EARLY_END}, {days_early} days)...")
-    with ProcessPoolExecutor(max_workers=4) as ex:
+    with ProcessPoolExecutor(max_workers=MEMMAP_POOL_WORKERS) as ex:
         list(tqdm(ex.map(process_chunk, tasks_early), total=len(tasks_early)))
 
     # ── PERIOD 2: HISTORICAL (1981-2014) ──
@@ -368,7 +502,7 @@ if __name__ == "__main__":
                            days_h, "1850-01-01", H, W))
         curr += chunk; c_date += pd.Timedelta(days=chunk)
     print(f"Processing Historical ({HIST_START} to {HIST_END}, {days_h} days)...")
-    with ProcessPoolExecutor(max_workers=4) as ex:
+    with ProcessPoolExecutor(max_workers=MEMMAP_POOL_WORKERS) as ex:
         list(tqdm(ex.map(process_chunk, tasks_hist), total=len(tasks_hist)))
 
     # ── PERIOD 3: FUTURE (2015-2100) ──
@@ -385,10 +519,10 @@ if __name__ == "__main__":
                           days_f, "2015-01-01", H, W))
         curr += chunk; c_date += pd.Timedelta(days=chunk)
     print(f"Processing Future ({FUT_START} to {FUT_END}, {days_f} days)...")
-    with ProcessPoolExecutor(max_workers=4) as ex:
+    with ProcessPoolExecutor(max_workers=MEMMAP_POOL_WORKERS) as ex:
         list(tqdm(ex.map(process_chunk, tasks_fut), total=len(tasks_fut)))
 
-    print("\nSUCCESS. All three periods processed (nearest-neighbor).")
+    print("\nSUCCESS. All three periods processed (pr conservative, others bilinear).")
     print(f"  -> {f_in_early}")
     print(f"  -> {f_in}")
     print(f"  -> {f_tar}")

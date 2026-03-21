@@ -4,6 +4,10 @@
 *.npz
 
 # Pipeline data folders
-week3/pipeline/data/
-week3/pipeline/output/
-week3/pipeline/source_bc/
+**/pipeline/data/
+**/pipeline/source_bc/
+**/pipeline/gridmet_cropped/
+
+# Python cache
+__pycache__/
+*.pyc
