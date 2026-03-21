@@ -32,13 +32,13 @@ import matplotlib.colors as mcolors
 # ==========================================
 # CONFIGURATION
 # ==========================================
-OUTPUT_DIR = r"C:\drops-of-resilience\week3\pipeline\data\nearest_neighbor"
+OUTPUT_DIR = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\data\nearest_neighbor"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 PATHS = {
-    "CMIP6":   r"C:\drops-of-resilience\week3\pipeline\source_bc",
+    "CMIP6":   r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\source_bc",
     "PRISM":   r"D:\Research\Projects\WRC\Cropped_PRISM_800m",
-    "GridMET": r"C:\drops-of-resilience\week3\pipeline\gridmet_cropped",
+    "GridMET": r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\gridmet_cropped",
     "Geo":     r"D:\Research\Projects\WRC\Cropped_Geospatial",
     "WindEffect": r"E:\SpatialDownscaling\Data_WindEffect_Static"
 }
@@ -63,7 +63,7 @@ GRIDMET_NAME_MAP = {
 
 # All variables use nearest-neighbor
 REGRID_METHOD = {
-    "ppt":  "nearest",
+    "ppt":  "conservative",
     "tmax": "nearest",
     "tmin": "nearest",
     "srad": "nearest",

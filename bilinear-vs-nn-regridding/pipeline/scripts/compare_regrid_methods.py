@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-BASE     = r"C:\drops-of-resilience\week3"
+BASE     = r"C:\drops-of-resilience\bilinear-vs-nn-regridding"
 BIL_CSV  = os.path.join(BASE, "pipeline", "output", "bilinear",         "Bilinear_Table1_Pooled_Metrics.csv")
 NN_CSV   = os.path.join(BASE, "pipeline", "output", "nearest_neighbor", "NN_Table1_Pooled_Metrics.csv")
 OUT_HTML = os.path.join(BASE, "regrid_comparison_report.html")
@@ -26,8 +26,8 @@ OUT_HTML = os.path.join(BASE, "regrid_comparison_report.html")
 bil = pd.read_csv(BIL_CSV).set_index("Variable")
 nn  = pd.read_csv(NN_CSV).set_index("Variable")
 
-VARS       = ["pr", "tasmax", "tasmin", "rsds", "wind", "huss"]
-VAR_LABELS = ["pr", "tasmax", "tasmin", "rsds", "wind", "huss"]
+VARS       = ["tasmax", "tasmin", "rsds", "wind", "huss"]
+VAR_LABELS = ["tasmax", "tasmin", "rsds", "wind", "huss"]
 
 # ── Differences ────────────────────────────────────────────────────────────────
 kge_diff   = np.array([(nn.loc[v,"Val_KGE"]        - bil.loc[v,"Val_KGE"])        / abs(bil.loc[v,"Val_KGE"])        * 100 for v in VARS])
@@ -260,6 +260,7 @@ html = f"""<!DOCTYPE html>
 
 <h1>Bilinear vs Nearest-Neighbor Regridding &mdash; Comparison Report</h1>
 <p class="note">MPI-ESM1-2-HR &bull; OTBC physics-corrected &bull; Iowa domain &bull; Validation period 1981&ndash;2014</p>
+<p class="note"><strong>Note on precipitation (pr):</strong> Both paths use conservative regridding for pr regardless of the bilinear/NN choice, because conservative is physically required to preserve total rainfall when moving from 100&nbsp;km to 4&nbsp;km. pr metrics are therefore identical between paths and are excluded from this comparison. The bilinear vs. NN distinction applies only to tasmax, tasmin, rsds, wind, and huss.</p>
 
 <h2>Summary</h2>
 <p>
@@ -267,7 +268,7 @@ For the four well-modelled variables (tasmax, tasmin, rsds, huss), no meaningful
 exist between bilinear and NN regridding on any metric. In the absence of a clear winner,
 NN is preferable because it makes fewer assumptions: bilinear interpolation introduces spatial
 smoothing across 100&nbsp;km GCM cell boundaries that requires justification, whereas NN makes
-no such assumption. NN also has a modest computational advantage, though that is a secondary consideration.
+no such assumption. NN also carries a modest computational advantage, though that is a secondary consideration.
 </p>
 <p>
 For <strong>wind</strong>, NN reduces Ext99 Bias% by 2.1 percentage points (moderate performance tier),
@@ -275,20 +276,9 @@ while bilinear reduces RMSE by 1.3%. Since extreme wind behavior is more consequ
 downstream impact applications than mean error, NN is the preferred choice for wind.
 </p>
 <p>
-For <strong>precipitation</strong>, both methods score near-zero on KGE (&lt;0.03), indicating
-neither captures day-to-day variability well at this stage &mdash; the regridding method is not
-the bottleneck. The only meaningful result is that NN reduces Lag1 Error by 9.5%, suggesting
-slightly better precipitation persistence. However, this result should be treated cautiously:
-test8 is stochastic, and a single run cannot distinguish a genuine structural advantage from
-a favorable random draw. Verification across multiple seeds would be needed to confirm.
-Provisionally, NN is preferred for precipitation given this Lag1 signal, but the low overall
-skill means the choice is unlikely to affect downstream conclusions.
-</p>
-<p>
-<strong>Overall recommendation:</strong> switch to NN regridding for all variables.
-NN makes fewer assumptions than bilinear, matches or outperforms it on the metrics that matter,
-and carries a modest computational advantage. The one area of uncertainty (pr Lag1) warrants
-follow-up with multiple seeds, but is not a reason to retain bilinear.
+<strong>Overall recommendation:</strong> switch to NN regridding for all variables (retaining
+conservative for pr, as required). NN makes fewer assumptions than bilinear and matches or
+outperforms it on the metrics that matter.
 </p>
 
 <h2>Figure: % Change in Key Metrics (NN relative to Bilinear)</h2>

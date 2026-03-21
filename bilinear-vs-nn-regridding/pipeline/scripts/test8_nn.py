@@ -58,7 +58,7 @@ N_DAYS_EARLY = len(DATES_EARLY)
 DATES_FUTURE = pd.date_range("2015-01-01", "2100-12-31")
 N_DAYS_FUTURE = len(DATES_FUTURE)
 
-BASE_DIR       = r"C:\drops-of-resilience\week3\pipeline\data\nearest_neighbor"
+BASE_DIR       = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\data\nearest_neighbor"
 F_INPUTS       = os.path.join(BASE_DIR, "cmip6_inputs_19810101-20141231.dat")
 F_TARGETS      = os.path.join(BASE_DIR, "gridmet_targets_19810101-20141231.dat")
 F_MASK         = os.path.join(BASE_DIR, "geo_mask.npy")
@@ -81,7 +81,7 @@ try:
 except FileNotFoundError:
     H, W = 84, 96
 
-OUT_DIR = r"C:\drops-of-resilience\week3\pipeline\output\nearest_neighbor"
+OUT_DIR = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\output\nearest_neighbor"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

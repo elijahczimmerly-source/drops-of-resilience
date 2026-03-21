@@ -87,12 +87,16 @@ Only plotting/analysis scripts (no pipeline scripts):
 - There is a **test7 / test7_v2.py** referenced in `regrid_all_models_iowa.py` — not yet found or read. On Bhuwan's machine.
 - **`gridmet_paths.py`** — shared config module imported by `regrid_to_gridmet.py` and `test8.py`. Provides `GRIDMET_DATA_DIR`. On Bhuwan's machine, not on server. Not needed for local pipeline scripts (paths are hardcoded in those).
 
-### Local pipeline scripts (`C:\drops-of-resilience\pipeline\scripts\`)
+### Local pipeline scripts (`C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\scripts\`)
 | Script | Purpose |
 |--------|---------|
-| `test8_bilinear.py` | test8 logic with hardcoded local paths pointing to `pipeline/data/bilinear/`. Outputs to `pipeline/output/bilinear/`. Ready to run. |
-| `test8_nn.py` | test8 logic with hardcoded local paths pointing to `pipeline/data/nearest_neighbor/`. Outputs to `pipeline/output/nearest_neighbor/`. Needs NN-regridded .dat files first. |
-| `regrid_to_gridmet_nn.py` | Nearest-neighbor variant of regrid_to_gridmet.py. Reads `Cropped_BC_MPI/*.npz` from `pipeline/source_bc/` and GridMET .nc files from Bhuwan's machine. Writes .dat files to `pipeline/data/nearest_neighbor/`. Blocked on Bhuwan sharing source files. |
+| `test8_bilinear.py` | test8 logic with hardcoded local paths pointing to `pipeline/data/bilinear/`. Outputs to `pipeline/output/bilinear/`. |
+| `test8_nn.py` | test8 logic with hardcoded local paths pointing to `pipeline/data/nearest_neighbor/`. Outputs to `pipeline/output/nearest_neighbor/`. |
+| `regrid_to_gridmet_bilinear.py` | Bilinear variant of regrid_to_gridmet.py. Conservative for PR, bilinear for others. Reads from `source_bc/`, outputs to `pipeline/data/bilinear/`. |
+| `regrid_to_gridmet_nn.py` | NN variant of regrid_to_gridmet.py. Reads from `source_bc/`, outputs to `pipeline/data/nearest_neighbor/`. |
+| `crop_bc_mpi_local.py` | Crops physics-corrected OTBC MPI data from server to Iowa. Outputs to `source_bc/`. |
+| `crop_gridmet_local.py` | Crops GridMET CONUS .nc files from server to Iowa. Outputs to `gridmet_cropped/`. |
+| `compare_regrid_methods.py` | Generates `regrid_comparison_report.html` from the two sets of output CSVs. |
 
 ---
 
@@ -227,6 +231,25 @@ The GridMET `.nc` files (one per variable per year, with lat/lon coordinate axes
 
 ---
 
+## Pipeline Assessment
+
+**Strengths:**
+- Double-BC problem identified and fixed (test8 removes test7's extra correction)
+- Physics correction enforcing variable consistency (tasmax > tasmin, huss bounds)
+- AR(1) noise in test8 captures temporal structure — more sophisticated than independent daily noise
+- Schaake Shuffle for inter-variable rank correlations is best practice
+- Semi-monthly windows (24 vs 12) better captures seasonal transitions
+- Conservative regridding for PR preserves physical mass balance
+
+**Weaknesses / open questions:**
+- PR and wind KGE near zero — pipeline isn't capturing day-to-day variability for those variables. Not a regridding problem; likely something in the BC quality or the multiplicative downscaling pathway
+- Single-seed stochastic validation makes it hard to separate signal from noise in metrics
+- ML/DL alternatives were explored but abandoned without a well-tuned benchmark comparison — stochastic approach hasn't been rigorously compared against a strong ML baseline
+
+**Note on GCM coverage:** The bilinear vs NN comparison only tested MPI-ESM1-2-HR + OTBC. No known preferred GCM among the five — Bhuwan runs all of them. Results likely generalize but not confirmed across other GCMs.
+
+---
+
 ## Key Context from Bhuwan (bhuwan-info.txt)
 
 - ML/DL downscaling tested but failed: "Pure stochastic method works better than ML hybrids"
@@ -245,7 +268,7 @@ The GridMET `.nc` files (one per variable per year, with lat/lon coordinate axes
 
 **Setup:** Two parallel pipelines using identical test8 logic, differing only in regridding method. Both used the same physics-corrected OTBC source data (`source_bc/`) for a fair comparison. Validated on 1981–2014 period, Iowa domain, MPI-ESM1-2-HR.
 
-**Report:** `C:\drops-of-resilience\week3\regrid_comparison_report.html`
+**Report:** `C:\drops-of-resilience\bilinear-vs-nn-regridding\regrid_comparison_report.html`
 
 **Recommendation: Switch to NN for all variables.** NN makes fewer assumptions than bilinear (no smoothing of GCM cell boundaries), matches or outperforms bilinear on the metrics that matter, and has a modest computational advantage. The one area of uncertainty (pr Lag1) warrants follow-up with multiple seeds but is not a reason to retain bilinear.
 
@@ -271,7 +294,7 @@ The GridMET `.nc` files (one per variable per year, with lat/lon coordinate axes
 
 ## Open Questions / To Investigate
 
-- **Bilinear vs NN comparison (Priority sub-task)**: **Complete.** Recommendation: switch to NN. See report at `week3/regrid_comparison_report.html`. Pending: verify pr Lag1 result across multiple seeds.
+- **Bilinear vs NN comparison (Priority sub-task)**: **Complete.** Recommendation: switch to NN. See report at `bilinear-vs-nn-regridding/regrid_comparison_report.html`. Pending: verify pr Lag1 result across multiple seeds.
 - **Priority #2 (BC-first vs downscale-first)**: Deferred until downscaling method is validated.
 - **Stochastic noise (Priority #3)**: Has not been empirically tested for WEPP compatibility.
 - **Terrain-based BC (Priority #4)**: Not yet explored; Bhuwan suggested looking into whether DEM/slope/aspect are used in any existing BC methods.
