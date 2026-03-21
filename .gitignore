@@ -1,0 +1,9 @@
+# Large data files
+*.dat
+*.npy
+*.npz
+
+# Pipeline data folders
+week3/pipeline/data/
+week3/pipeline/output/
+week3/pipeline/source_bc/

@@ -1,0 +1,208 @@
+Hi Bhuwan, I can't find an rsds file for EC-Earth3P highresSST-present anywhere in the server. I see rsds files for highresSST from climate models other than EC-Earth3P and I see rsds files for EC-Earth3P for the control experiment only.  I do not see one with the model and experiment matching that of the huss filename we were given. Is it supposed to be there, or should I be using a different file for rsds? Thanks!
+ 
+you can go ahead and use other scenario available
+ 
+Do you have access to modelsdev on cylo?
+ 
+Yes
+ 
+https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+Boundary Shapefiles link
+TIGER/Line Shapefiles
+View all the available mapping files from the Geography program.
+ 
+"\\abe-cylo\Cylo-bshah\WRC_DOR"
+ 
+can you check if you have access to this folder
+ 
+No, I can't access Cylo-bshah
+ 
+i gave you access to some specific folders
+ 
+not Cylo-bshah
+ 
+Shah, Bhuwan P
+"\\abe-cylo\Cylo-bshah\WRC_DOR"
+put this in the search bar and try
+ 
+Nothing happens when I put it in the search bar, just tries to search it using edge. In the file explorer bar, it says I don't have access
+ 
+oh ok
+
+i will move it to models dev
+ 
+ok
+ 
+"\\abe-cylo\modelsdev\Projects\WRC_DOR"
+ 
+test 6 is the latest script that i was working on for spatial downscaling
+ 
+got it
+ 
+"\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\Data_Regrided_Gridmet" has all the data needs for that script. 
+ 
+Okay
+ 
+I will take a look at this soon
+ 
+sure whenever you want to
+ 
+Hi Bhuwan, it's possible you've answered this question before and I've forgotten - if I log <10 hours in a week, can I log >10 hours in a subsequent week to make up for it or do I have to make it up on the back end (summer)?
+ 
+we can manage that however you prefer. 
+ 
+we can increase it later or when you do not work you can add it to that week
+ 
+are you working on spring break?
+ 
+Yeah, I'm on campus for spring break so I have a fair amount of time on my hands
+ 
+I'm at 9.3 hours this week, I logged only 6 hours last week and 6.5 the week before
+ 
+let me know if we need to discuss anything. You can log hours this week if you work.
+ 
+So it's okay if I log more this week? >10?
+ 
+i don't know about the limit. I will check with Ryan. 
+ 
+i do not want to say anything about this on teams since this is signed in with isu, but we can manage the hours
+ 
+we can chat more when we meet in person
+ 
+Okay
+ 
+Would the inputs to test6 be bias corrected already or raw CMIP6?
+ 
+it is bias corrected 
+ 
+ok
+ 
+In your scripts, I only noticed one time where you tested bias correction after spatial downscaling. It was as a fix for some ML/DL downscaling technique, I believe you were trying to correct "variance collapse". I know this was only EQM bias correction and only applied for pr and wind, but did it fix the "variance collapse" issue and did you learn anything about bias correcting after downscaling beyond that?
+ 
+Yes you are right
+ 
+Ml/dl do perform well with variables like precipitation and wind
+ 
+They just focus on reducing the mean bias 
+ 
+And extremes are never well handled so i tried variance scaling 
+ 
+But that didn't work
+
+So did bias correcting after the ML/DL downscaling fix the variance collapse issue? That's different from variance scaling right?
+ 
+No it didn't 
+ 
+Pure stochastic method works better than ml hybrids
+ 
+We can discuss on a call of we want. I'm available 
+ 
+Sure
+ 
+Frobenius norm error
+ 
+cores
+ 
+the bias correction data are correct. the historical has onlyt from 1850 to 2014 resta are nan and future from 2015 to 2100
+ 
+ok
+ 
+The noise you add in test6 - have you empirically tested whether or not it brings the data closer to reality and if it could disrupt things for WEPP?
+ 
+i have not done tests for hydrological modeling. Also, if the test6 is doing bias correction of any sort, let's not do that since we will be doing bias correction twice 
+ 
+reviewer won't like that
+ 
+so make sure to just do bias correction once before or after downscaling whichever is best
+ 
+Yeah, I wondered about that too, thanks for clarifying
+ 
+How much have your explored adjusting your bias correction based on terrain? Is Iowa too flat for it to matter?
+ 
+iowa is flat but bias correction is not usually done using terrain. but i may be wrong. maybe it is done nowadays
+ 
+Idk, it was just an idea I had. I think a lot of bias correction assumes spatial uniformity, so I was wondering if this was something you had explored. I think we did talk about it during the first in person meeting a little maybe
+ 
+yeah. that might be a good topic to explore. can you look into it
+ 
+if they use any static feature like DEM/Slope for bias correction. but fyi only temperature is slope dependent.
+ 
+there might be other spatial features that might help
+ 
+Okay, I may look into it. These are my priorities right now: 
+
+sounds good
+ 
+if bias correction is done for the whole US or Global then elevation might be used though. so if you find out that bias correction should be donw before downscaling then we can try that
+ 
+Right, okay
+
+Could I have the regrid script you use to go from 100km to 4km (regrid_to_gridmet.py?)
+ 
+Sure
+ 
+I'll upload it to the folder
+ 
+Thanks
+ 
+"\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\Scripts\regrid_all_models_iowa.py"
+
+"\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\Scripts\regrid_to_gridmet.py"
+ 
+"\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\Scripts\test8.py"
+ 
+i am working on s new downscaling script
+ 
+What's going to be different in the new downscaling script?
+ 
+no interpolation
+ 
+if we do interpolation that is double bias correction
+ 
+ok
+ 
+i have added AR(1) model to have better temporal relation with added noise
+ 
+it is a time series model
+ 
+When you say you're working on a new downscaling script with no interpolation, do you mean a new regrid script, or new stochastic downscaler (e.g. test9.py)? Neither test6 nor test8 had any interpolation in them, right?
+ 
+Stochastic downscaler
+ 
+Do you know stochastic and deterministic models?
+ 
+Ohh i tried test7 too which isn't in the folder
+ 
+I tired interpolation but it's not allowed 
+ 
+Stochastic just means there's a random component right?
+ 
+Ok so there's some interpolation regrid_to_gridmet.py, and you tried some interpolation in test7, but going forward there will only be interpolation in regrid_to_gridmet because you don't want to do that twice?
+ 
+No. 
+ 
+I'll explain in a minute 
+ 
+I used othc bias corrected and physics corrected outputs 
+ 
+And then i also did some sort of bias correction in test7
+ 
+Double bias correction causes over fitting 
+
+Just to make sure I understand — in the new pipeline, is the bilinear interpolation in regrid_to_gridmet.py staying or being replaced?
+ 
+Zimmerly, Elijah
+Just to make sure I understand — in the new pipeline, is the bilinear interpolation in regrid_to_gridmet.py staying or being replaced?
+It is
+ 
+We need to regrid 100 km to 4 km first
+ 
+And for precipitation i believe conservative regriding is required 
+ 
+And we are interpolating using it's neighbours 
+ 
+Not target
+ 
+Target is just there as a skeleton 
+ 
+ 

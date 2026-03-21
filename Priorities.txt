@@ -1,6 +1,6 @@
 **Priorities**:
 
-1\. verify that averaging extremes doesn't converge to an average of averages, even over a long period of time.
+1\. Verify that interpolation = good
 
 2\. Compare: bias correction first to spatial downscaling first
 
