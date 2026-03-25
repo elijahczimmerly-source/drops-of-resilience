@@ -1,11 +1,16 @@
-**Priorities**:
-
 1\. Compare: bias correction first to spatial downscaling first
+First steps:
+-see if anyone else has used nearest neighbor
+-figure out what from test8 needs to stay to preserve spatial relationships (the noise looks at neighboring cells for example)
+
+Note from Bhuwan:
+when cropping and comparing a coarse resolution dataset and a high resolution one, add a buffer (make the bounds on the high resolution one a little bigger to capture the area in the jagged edges of the coarse one)
 
 2\. Stochastic noise: test empirically whether or not it brings the data closer to reality and if it could disrupt things for WEPP
 
 3\. find/develop and test a bias correction method that takes terrain into account rather than assuming spatial uniformity. Is Iowa too flat for it to matter?
 
 4\. explore post-correction consistency problems
+
 
  
