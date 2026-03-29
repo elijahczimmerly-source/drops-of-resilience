@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spatial Regridding Methods for Climate Downscaling</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#FDFCF9;--bg2:#F5F3EE;--bg3:#EDEAE3;
+  --text:#2A2926;--muted:#6B6860;--faint:#9E9A90;
+  --blue:#378ADD;--blue-d:#185FA5;--blue-l:#E6F1FB;
+  --coral:#D85A30;--coral-d:#993C1D;--coral-l:#FAECE7;
+  --teal:#1D9E75;--teal-d:#0F6E56;--teal-l:#E1F5EE;
+  --border:#D3D1C7;
+  --serif:'DM Serif Display',Georgia,serif;
+  --sans:'DM Sans','Helvetica Neue',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+body{
+  font-family:var(--sans);font-size:17px;line-height:1.72;
+  color:var(--text);background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+.container{max-width:860px;margin:0 auto;padding:0 2rem}
+
+/* Hero */
+.hero{
+  padding:5rem 0 3rem;text-align:center;
+  border-bottom:1px solid var(--border);margin-bottom:3.5rem;
+}
+.hero h1{
+  font-family:var(--serif);font-size:2.6rem;font-weight:400;
+  line-height:1.2;margin-bottom:1rem;letter-spacing:-0.02em;
+}
+.hero .subtitle{
+  font-size:1.05rem;color:var(--muted);max-width:540px;margin:0 auto;
+}
+
+/* Sections */
+section{margin-bottom:4.5rem}
+.section-num{
+  font-family:var(--mono);font-size:0.8rem;font-weight:500;
+  color:var(--faint);text-transform:uppercase;letter-spacing:0.12em;
+  margin-bottom:0.5rem;
+}
+h2{
+  font-family:var(--serif);font-size:1.85rem;font-weight:400;
+  line-height:1.25;margin-bottom:0.5rem;
+}
+h2 .alt{color:var(--muted);font-style:italic;font-size:0.85em}
+h3{
+  font-family:var(--sans);font-size:1.05rem;font-weight:700;
+  margin:2rem 0 0.5rem;
+}
+p{margin-bottom:1rem}
+.lead{font-size:1.05rem;color:var(--muted);margin-bottom:2rem}
+
+/* Visualization containers */
+.viz-wrap{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;padding:2rem 1.5rem;margin:2rem 0;
+  position:relative;overflow:hidden;
+}
+.viz-wrap canvas{display:block;margin:0 auto}
+.viz-label{
+  font-family:var(--mono);font-size:0.72rem;font-weight:500;
+  color:var(--faint);text-transform:uppercase;letter-spacing:0.1em;
+  text-align:center;margin-bottom:1rem;
+}
+
+/* Legend */
+.legend{
+  display:flex;gap:1.2rem;justify-content:center;
+  margin-top:1rem;flex-wrap:wrap;
+}
+.legend span{
+  display:flex;align-items:center;gap:6px;
+  font-size:0.8rem;color:var(--muted);
+}
+.legend .swatch{
+  width:14px;height:10px;border-radius:2px;display:inline-block;
+}
+
+/* Callout */
+.callout{
+  border-left:3px solid var(--blue);padding:1rem 1.25rem;
+  background:var(--blue-l);border-radius:0 8px 8px 0;
+  margin:1.5rem 0;font-size:0.95rem;
+}
+.callout.coral{border-left-color:var(--coral);background:var(--coral-l)}
+.callout.teal{border-left-color:var(--teal);background:var(--teal-l)}
+.callout strong{font-weight:700}
+
+/* Comparison table */
+.cmp-table{
+  width:100%;border-collapse:collapse;margin:2rem 0;
+  font-size:0.92rem;
+}
+.cmp-table th{
+  font-family:var(--mono);font-size:0.72rem;font-weight:500;
+  text-transform:uppercase;letter-spacing:0.1em;color:var(--faint);
+  text-align:left;padding:0.75rem 1rem;border-bottom:2px solid var(--border);
+}
+.cmp-table td{
+  padding:0.75rem 1rem;border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table .method{font-weight:700;white-space:nowrap}
+
+/* Slider row */
+.ctrl-row{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:1rem;justify-content:center;
+}
+.ctrl-row label{
+  font-size:0.85rem;color:var(--muted);white-space:nowrap;
+}
+.ctrl-row input[type=range]{flex:0 1 260px}
+.ctrl-row .val{
+  font-family:var(--mono);font-size:0.9rem;font-weight:500;
+  min-width:28px;text-align:right;
+}
+
+/* Footer */
+footer{
+  text-align:center;padding:2rem 0 3rem;
+  font-size:0.85rem;color:var(--faint);
+  border-top:1px solid var(--border);margin-top:2rem;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="hero">
+  <h1>Three approaches to spatial regridding</h1>
+  <p class="subtitle">How climate downscaling pipelines translate coarse GCM output onto a fine-resolution grid &mdash; and why the method matters.</p>
+</div>
+
+<!-- ==================== SECTION 1 ==================== -->
+<section id="s1">
+  <p class="section-num">Method 01</p>
+  <h2>Deterministic regridding <span class="alt">Nearest neighbor &amp; bilinear interpolation</span></h2>
+  <p class="lead">Apply a fixed mathematical rule to fill in values between coarse grid points. No observations, no learning &mdash; just geometry.</p>
+
+  <p>The simplest approach: take the coarse GCM field and apply an interpolation (or resampling) rule to assign a value to every fine-resolution cell. The two most common rules are <strong>nearest neighbor</strong>, which copies the value of the closest coarse cell, and <strong>bilinear interpolation</strong>, which computes a distance-weighted average of the surrounding coarse values.</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">Coarse &rarr; fine via two deterministic methods</div>
+    <div class="ctrl-row">
+      <label>Fine cells per coarse cell</label>
+      <input type="range" min="2" max="20" value="6" step="1" id="s1-ratio">
+      <span class="val" id="s1-val">6</span>
+    </div>
+    <canvas id="cv1" style="width:100%;max-width:720px;height:300px;"></canvas>
+    <div class="legend">
+      <span><span class="swatch" style="background:#378ADD"></span> Coarse grid values</span>
+      <span><span class="swatch" style="background:#378ADD;height:3px;width:18px;border-radius:0"></span> Bilinear interpolation</span>
+      <span><span class="swatch" style="background:#E24B4A;height:0;border-top:2px dashed #E24B4A;width:18px"></span> Nearest neighbor</span>
+      <span><span class="swatch" style="background:#1D9E75;border-radius:50%;width:8px;height:8px"></span> Sampled fine cells</span>
+    </div>
+  </div>
+
+  <p>Both methods produce a smooth (or stepwise) field, but neither invents spatial detail that the GCM didn't already contain. A 25&times; upscaled field will be spatially bland &mdash; hilltops and valleys are invisible because the GCM never resolved them. The fine grid has more pixels, but no more information.</p>
+
+  <h3>Why it matters for precipitation</h3>
+  <p>Bilinear interpolation averages neighboring coarse cells. For temperature, that's usually fine &mdash; the field is smooth. For precipitation, it creates problems: a storm cell (20&thinsp;mm) next to a dry cell (0&thinsp;mm) produces boundary values of 10&thinsp;mm, a physical state that neither cell actually experienced. When a quantile-mapping step follows, it maps from an artificial input value, which can distort the correction.</p>
+
+  <div class="callout">
+    <strong>Bottom line:</strong> Fast and simple. Good enough when a statistical correction method (like QDM) follows and does the real work. The interpolation method is not a major lever &mdash; but for non-Gaussian fields like precipitation, nearest neighbor may slightly outperform bilinear because it preserves real GCM values.
+  </div>
+</section>
+
+<!-- ==================== SECTION 2 ==================== -->
+<section id="s2">
+  <p class="section-num">Method 02</p>
+  <h2>Constructed Analogs</h2>
+  <p class="lead">Don't interpolate &mdash; search. Find historical observed days with similar large-scale patterns and blend their real fine-resolution fields.</p>
+
+  <p>Instead of computing values between coarse grid points, this method uses the GCM's coarse pattern as a <em>search key</em> into the observational archive. It finds the historical days whose large-scale patterns most closely match today's GCM output, then constructs the fine-resolution output as a weighted combination of those days' actual high-resolution observations.</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">GCM pattern &rarr; analog search &rarr; blend observed days</div>
+    <canvas id="cv2" style="width:100%;max-width:720px;height:500px;"></canvas>
+    <div class="legend">
+      <span><span class="swatch" style="background:#378ADD"></span> Cool</span>
+      <span><span class="swatch" style="background:#E8E5DB;border:0.5px solid #ccc"></span> Neutral</span>
+      <span><span class="swatch" style="background:#D85A30"></span> Warm</span>
+    </div>
+  </div>
+
+  <p>The GCM's role is reduced to <strong>pattern selection</strong>: it's an index into a library of real observed spatial detail, not a source of spatial detail itself. Every fine-scale feature in the output &mdash; ridgelines, rain shadows, lake effects &mdash; traces back to a day when those features were actually measured.</p>
+
+  <h3>Refinements: LOCA and MACA</h3>
+  <p><strong>LOCA</strong> (Localized Constructed Analogs) performs the analog search locally &mdash; each region picks its own best-matching days, so Iowa and Nebraska can draw from different historical dates in the same output. <strong>MACA</strong> (Multivariate Adaptive Constructed Analogs) adds the constraint that analog days for temperature and precipitation must be selected jointly, preserving cross-variable relationships.</p>
+
+  <div class="callout teal">
+    <strong>Tradeoff:</strong> The method can only produce spatial patterns that actually occurred in the observational record. If climate change produces a genuinely novel pattern with no historical precedent, the method defaults to the closest available match, which may not be representative.
+  </div>
+</section>
+
+<!-- ==================== SECTION 3 ==================== -->
+<section id="s3">
+  <p class="section-num">Method 03</p>
+  <h2>Analog Regression <span class="alt">GARD</span></h2>
+  <p class="lead">A hybrid: find analog days like before, but instead of blending their fields, fit a regression that learns the coarse&ndash;fine relationship &mdash; then apply it to today's GCM.</p>
+
+  <p>Like Constructed Analogs, GARD begins by searching the observational record for days with similar large-scale patterns. But instead of directly blending those days' fine-scale fields, it uses the analog pool as training data: for each fine pixel, it fits a regression model that captures the local statistical relationship between coarse-scale predictors and fine-scale response.</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">Analog pool &rarr; fit local regression &rarr; predict from today&rsquo;s GCM</div>
+    <canvas id="cv3" style="width:100%;max-width:720px;height:500px;"></canvas>
+    <div class="legend">
+      <span><span class="swatch" style="background:#1D9E75;border-radius:50%"></span> Analog day observations</span>
+      <span><span class="swatch" style="background:#378ADD;height:3px;width:18px;border-radius:0"></span> Fitted regression</span>
+      <span><span class="swatch" style="background:#D85A30;border-radius:50%"></span> Today's prediction</span>
+    </div>
+  </div>
+
+  <p>The scatter plot above shows the key insight. Each green dot is one analog day's data for a single pixel: its coarse regional value on the x-axis, its observed fine-scale value on the y-axis. The regression line captures the learned trend. When today's GCM value (coral) falls slightly beyond the observed range, the regression can still predict &mdash; it extrapolates along the fitted relationship.</p>
+
+  <p>Pure Constructed Analogs would be capped at the highest observed value (0.59), because it can only blend what it has seen. GARD's regression predicts 0.64 by extending the statistical trend. This matters for climate change scenarios, where GCM values may drift outside the historical envelope.</p>
+
+  <div class="callout coral">
+    <strong>Tradeoff:</strong> Extrapolation only works for modest departures from historical experience. If the GCM produces a pattern wildly unlike anything in the record, the regression is extending a line into territory where there's no evidence it still holds.
+  </div>
+</section>
+
+<!-- ==================== COMPARISON ==================== -->
+<section id="compare">
+  <p class="section-num">Comparison</p>
+  <h2>At a glance</h2>
+
+  <table class="cmp-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Source of fine-scale detail</th>
+        <th>Handles novel climates?</th>
+        <th>Key assumption</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="method">Deterministic regridding</td>
+        <td>Mathematical rule (geometry only)</td>
+        <td>Yes &mdash; works on any GCM field</td>
+        <td>Spatial smoothness between grid points</td>
+      </tr>
+      <tr>
+        <td class="method">Constructed Analogs</td>
+        <td>Real observed days, blended by pattern similarity</td>
+        <td>No &mdash; limited to observed patterns</td>
+        <td>The future resembles some combination of past days</td>
+      </tr>
+      <tr>
+        <td class="method">Analog Regression</td>
+        <td>Regression learned from observed analog days</td>
+        <td>Slightly &mdash; can extrapolate modestly</td>
+        <td>Local coarse&ndash;fine relationships are linear and stable</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>In practice, all three approaches are typically followed by a bias correction step (such as QDM or quantile mapping) that maps the regridded values onto observed local distributions. The regridding method determines the spatial structure of the input to that correction; the correction determines the distributional fidelity of the output.</p>
+</section>
+
+<footer>
+  Drops of Resilience &mdash; Spatial Regridding Reference
+</footer>
+
+</div>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+// ---- Shared utilities ----
+function lrp(a,b,t){return a+(b-a)*t}
+function clamp(v){return Math.max(0,Math.min(1,v))}
+function vc(v){
+  let r,g,b;
+  if(v<=0.5){const t=v/0.5;r=lrp(55,232,t);g=lrp(138,229,t);b=lrp(221,219,t)}
+  else{const t=(v-0.5)/0.5;r=lrp(232,216,t);g=lrp(229,90,t);b=lrp(219,48,t)}
+  return`rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`
+}
+function rng(s){return function(){s=(s*1664525+1013904223)&0xFFFFFFFF;return(s>>>0)/4294967296}}
+function initCanvas(id){
+  const cv=document.getElementById(id),ctx=cv.getContext('2d');
+  const dpr=window.devicePixelRatio||1,rect=cv.getBoundingClientRect();
+  cv.width=rect.width*dpr;cv.height=rect.height*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return{cv,ctx,W:rect.width,H:rect.height}
+}
+
+// ---- Section 1: Deterministic regridding (1D) ----
+const coarseVals=[0.2,0.7,0.35,0.85,0.5];
+const nCoarse=coarseVals.length;
+
+function draw1(){
+  const{cv,ctx,W,H}=initCanvas('cv1');
+  const ratio=parseInt(document.getElementById('s1-ratio').value);
+  document.getElementById('s1-val').textContent=ratio;
+  ctx.clearRect(0,0,W,H);
+  const pad={l:48,r:24,t:24,b:36};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  function xPos(i){return pad.l+(i/(nCoarse-1))*pw}
+  function yPos(v){return pad.t+(1-v)*ph}
+
+  // Grid
+  ctx.strokeStyle='#D3D1C7';ctx.lineWidth=0.5;
+  for(let v=0;v<=1;v+=0.25){
+    ctx.beginPath();ctx.moveTo(pad.l,yPos(v));ctx.lineTo(pad.l+pw,yPos(v));ctx.stroke();
+  }
+  ctx.fillStyle='#9E9A90';ctx.font='11px "DM Sans",sans-serif';ctx.textAlign='right';
+  for(let v=0;v<=1;v+=0.25) ctx.fillText(v.toFixed(2),pad.l-8,yPos(v)+4);
+
+  function lerp1(x){
+    const seg=x*(nCoarse-1);const i=Math.min(Math.floor(seg),nCoarse-2);
+    const t=seg-i;return coarseVals[i]*(1-t)+coarseVals[i+1]*t;
+  }
+  function nn(x){return coarseVals[Math.min(Math.round(x*(nCoarse-1)),nCoarse-1)]}
+
+  // NN
+  ctx.beginPath();ctx.strokeStyle='#E24B4A';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  for(let px=0;px<=pw;px++){
+    const v=nn(px/pw);px===0?ctx.moveTo(pad.l+px,yPos(v)):ctx.lineTo(pad.l+px,yPos(v));
+  }
+  ctx.stroke();ctx.setLineDash([]);
+
+  // Bilinear
+  ctx.beginPath();ctx.strokeStyle='#378ADD';ctx.lineWidth=2.5;
+  for(let px=0;px<=pw;px++){
+    const v=lerp1(px/pw);px===0?ctx.moveTo(pad.l+px,yPos(v)):ctx.lineTo(pad.l+px,yPos(v));
+  }
+  ctx.stroke();
+
+  // Fine samples
+  const totalFine=(nCoarse-1)*ratio+1;
+  for(let fi=0;fi<totalFine;fi++){
+    const x=fi/(totalFine-1),v=lerp1(x);
+    ctx.beginPath();ctx.arc(pad.l+x*pw,yPos(v),3.5,0,Math.PI*2);
+    ctx.fillStyle='#1D9E75';ctx.fill();
+  }
+
+  // Coarse points
+  for(let i=0;i<nCoarse;i++){
+    ctx.beginPath();ctx.arc(xPos(i),yPos(coarseVals[i]),7,0,Math.PI*2);
+    ctx.fillStyle='#378ADD';ctx.fill();
+    ctx.beginPath();ctx.arc(xPos(i),yPos(coarseVals[i]),5,0,Math.PI*2);
+    ctx.fillStyle='#fff';ctx.fill();
+    ctx.beginPath();ctx.arc(xPos(i),yPos(coarseVals[i]),5,0,Math.PI*2);
+    ctx.fillStyle='#378ADD';ctx.fill();
+  }
+}
+document.getElementById('s1-ratio').addEventListener('input',draw1);
+
+// ---- Section 2: Constructed Analogs (grids) ----
+const gcm=[0.22,0.28,0.36,0.40,0.32,0.40,0.48,0.54,0.46,0.54,0.64,0.72,0.56,0.65,0.76,0.86];
+
+function drawGrid(ctx,data,cols,x,y,sz,opts={}){
+  const rows=data.length/cols;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    ctx.fillStyle=vc(data[r*cols+c]);
+    ctx.fillRect(x+c*sz,y+r*sz,sz,sz);
+  }
+  ctx.strokeStyle='#D3D1C7';ctx.lineWidth=0.5;
+  for(let r=0;r<=rows;r++){ctx.beginPath();ctx.moveTo(x,y+r*sz);ctx.lineTo(x+cols*sz,y+r*sz);ctx.stroke()}
+  for(let c=0;c<=cols;c++){ctx.beginPath();ctx.moveTo(x+c*sz,y);ctx.lineTo(x+c*sz,y+rows*sz);ctx.stroke()}
+  if(opts.coarseBorders){
+    ctx.strokeStyle='#2A2926';ctx.lineWidth=1;ctx.globalAlpha=0.2;
+    for(let i=0;i<=4;i++){
+      ctx.beginPath();ctx.moveTo(x+i*3*sz,y);ctx.lineTo(x+i*3*sz,y+rows*sz);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x,y+i*3*sz);ctx.lineTo(x+cols*sz,y+i*3*sz);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+  ctx.strokeStyle='#2A2926';ctx.lineWidth=1.2;ctx.globalAlpha=0.35;
+  ctx.strokeRect(x,y,cols*sz,rows*sz);ctx.globalAlpha=1;
+}
+
+function genAnalog(gcm,pa,pFn,seed){
+  const R=rng(seed);
+  const pc=gcm.map(v=>clamp(v+(R()-0.5)*pa));
+  const f=[];
+  for(let fy=0;fy<12;fy++)for(let fx=0;fx<12;fx++){
+    const cy=Math.floor(fy/3),cx=Math.floor(fx/3);
+    f.push(clamp(pc[cy*4+cx]+pFn(fx,fy)+(R()-0.5)*0.04));
+  }
+  return{coarse:pc,fine:f}
+}
+function ridge(fx,fy){const d=Math.abs(fx/11-fy/11);return d<0.25?0.13*(1-d/0.25):-0.04}
+function valley(fx,fy){const d=Math.sqrt((fx-3)**2+(fy-3)**2)/6;return d<0.6?-0.16*(1-d/0.6):0.03}
+function spots(fx,fy){
+  const d1=Math.sqrt((fx-9)**2+(fy-2)**2),d2=Math.sqrt((fx-2)**2+(fy-10)**2);
+  return(d1<3?0.13*(1-d1/3):0)+(d2<2.5?-0.12*(1-d2/2.5):0)
+}
+
+const a1=genAnalog(gcm,0.06,ridge,42),a2=genAnalog(gcm,0.10,valley,137),a3=genAnalog(gcm,0.14,spots,256);
+const caOutput=[];for(let i=0;i<144;i++)caOutput.push(a1.fine[i]*0.5+a2.fine[i]*0.3+a3.fine[i]*0.2);
+
+function draw2(){
+  const{cv,ctx,W,H}=initCanvas('cv2');
+  const s=W/720;ctx.save();ctx.scale(s,s);
+
+  // GCM
+  ctx.font='500 14px "DM Sans",sans-serif';ctx.fillStyle='#2A2926';ctx.textAlign='center';
+  ctx.fillText("Today's GCM output",360,18);
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';
+  ctx.fillText('Coarse resolution',360,36);
+  drawGrid(ctx,gcm,4,360-56,48,28);
+
+  // Search label
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';ctx.textAlign='center';
+  ctx.fillText('Search historical observations for days with a similar large-scale pattern',360,175);
+
+  // Dashed fan lines
+  ctx.setLineDash([4,3]);ctx.strokeStyle='#9E9A90';ctx.lineWidth=0.8;ctx.globalAlpha=0.4;
+  const colXs=[38,258,478];
+  colXs.forEach(cx=>{ctx.beginPath();ctx.moveTo(360,160);ctx.lineTo(cx+96,190);ctx.stroke()});
+  ctx.setLineDash([]);ctx.globalAlpha=1;
+
+  const dates=['Jan 15, 2004','Mar 22, 1998','Nov 3, 2011'];
+  const matchPcts=['93%','81%','68%'];
+  const wts=['weight: 0.50','weight: 0.30','weight: 0.20'];
+  const analogs=[a1,a2,a3];
+
+  for(let i=0;i<3;i++){
+    const cx=colXs[i],coarseX=cx,fineX=cx+64+20;
+    ctx.font='500 13px "DM Sans",sans-serif';ctx.fillStyle='#2A2926';ctx.textAlign='left';
+    ctx.fillText(dates[i],cx,210);
+    ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';
+    ctx.fillText('match: '+matchPcts[i],cx,226);
+
+    drawGrid(ctx,analogs[i].coarse,4,coarseX,240,16);
+
+    // Small arrow
+    ctx.strokeStyle='#9E9A90';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(coarseX+66,272);ctx.lineTo(fineX-4,262);ctx.stroke();
+    const a=Math.atan2(262-272,fineX-4-coarseX-66),sz=5;
+    ctx.beginPath();
+    ctx.moveTo(fineX-4-sz*Math.cos(a-0.4),262-sz*Math.sin(a-0.4));
+    ctx.lineTo(fineX-4,262);ctx.lineTo(fineX-4-sz*Math.cos(a+0.4),262-sz*Math.sin(a+0.4));
+    ctx.stroke();
+
+    drawGrid(ctx,analogs[i].fine,12,fineX,206,9,{coarseBorders:true});
+
+    ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';ctx.textAlign='center';
+    ctx.fillText(wts[i],fineX+54,330);
+    ctx.font='11px "DM Sans",sans-serif';
+    ctx.fillText('coarse',coarseX+32,316);
+    ctx.fillText('observed (fine)',fineX+54,344);
+  }
+
+  // Converge lines
+  ctx.setLineDash([3,3]);ctx.strokeStyle='#9E9A90';ctx.lineWidth=0.8;ctx.globalAlpha=0.35;
+  colXs.forEach(cx=>{
+    ctx.beginPath();ctx.moveTo(cx+64+20+54,352);ctx.lineTo(360,385);ctx.stroke();
+  });
+  ctx.setLineDash([]);ctx.globalAlpha=1;
+
+  // Output
+  ctx.font='500 14px "DM Sans",sans-serif';ctx.fillStyle='#2A2926';ctx.textAlign='center';
+  ctx.fillText('Constructed output',360,400);
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';
+  ctx.fillText('Weighted combination of real observed spatial detail',360,418);
+  drawGrid(ctx,caOutput,12,360-60,428,10,{coarseBorders:true});
+
+  ctx.restore();
+}
+
+// ---- Section 3: Analog Regression / GARD ----
+function draw3(){
+  const{cv,ctx,W,H}=initCanvas('cv3');
+  const s=W/720;ctx.save();ctx.scale(s,s);
+
+  // Top: GCM + analog pool
+  ctx.font='500 14px "DM Sans",sans-serif';ctx.fillStyle='#2A2926';ctx.textAlign='left';
+  ctx.fillText("Today's GCM",40,20);
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';
+  ctx.fillText('(coarse)',40,36);
+  drawGrid(ctx,gcm,4,40,48,22);
+
+  // Arrow
+  ctx.strokeStyle='#9E9A90';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(145,92);ctx.lineTo(185,92);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(180,88);ctx.lineTo(186,92);ctx.lineTo(180,96);ctx.stroke();
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';ctx.textAlign='left';
+  ctx.fillText('Find ~30 analog days',192,84);
+  ctx.fillText('with similar patterns',192,100);
+
+  // Tiny analog pool
+  const tinyX0=400;
+  ctx.font='500 13px "DM Sans",sans-serif';ctx.fillStyle='#2A2926';
+  ctx.fillText('Analog pool',tinyX0,20);
+  for(let a=0;a<5;a++){
+    const R=rng(a*100+7);
+    const t=gcm.map(v=>clamp(v+(R()-0.5)*(0.06+a*0.02)));
+    drawGrid(ctx,t,4,tinyX0+a*36,32,7);
+  }
+  ctx.font='14px "DM Sans",sans-serif';ctx.fillStyle='#9E9A90';
+  ctx.fillText('...',tinyX0+5*36+4,54);
+  ctx.font='11px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';
+  ctx.fillText('each paired with its fine-resolution observation',tinyX0,78);
+
+  // Label
+  ctx.font='500 14px "DM Sans",sans-serif';ctx.fillStyle='#2A2926';ctx.textAlign='center';
+  ctx.fillText('Instead of blending, learn the coarse \u2192 fine relationship',360,118);
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';
+  ctx.fillText('Example: one pixel in the fine grid',360,136);
+
+  // Scatter plot
+  const plotL=100,plotR=640,plotT=152,plotB=370;
+  const plotW=plotR-plotL,plotH=plotB-plotT;
+
+  ctx.fillStyle='#F5F3EE';ctx.globalAlpha=0.6;
+  ctx.fillRect(plotL,plotT,plotW,plotH);ctx.globalAlpha=1;
+  ctx.strokeStyle='#D3D1C7';ctx.lineWidth=0.5;
+  ctx.strokeRect(plotL,plotT,plotW,plotH);
+
+  const xMin=0.30,xMax=0.65,yMin=0.30,yMax=0.75;
+  function px(v){return plotL+(v-xMin)/(xMax-xMin)*plotW}
+  function py(v){return plotB-(v-yMin)/(yMax-yMin)*plotH}
+
+  // Grid lines
+  ctx.strokeStyle='#D3D1C7';ctx.lineWidth=0.5;ctx.globalAlpha=0.5;
+  for(let v=0.35;v<=0.60;v+=0.05){ctx.beginPath();ctx.moveTo(px(v),plotT);ctx.lineTo(px(v),plotB);ctx.stroke()}
+  for(let v=0.35;v<=0.70;v+=0.05){ctx.beginPath();ctx.moveTo(plotL,py(v));ctx.lineTo(plotR,py(v));ctx.stroke()}
+  ctx.globalAlpha=1;
+
+  // Axis labels
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';ctx.textAlign='center';
+  ctx.fillText('Coarse GCM value in this region',plotL+plotW/2,plotB+38);
+  ctx.save();ctx.translate(plotL-42,plotT+plotH/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('Observed fine value at this pixel',0,0);ctx.restore();
+
+  // Tick labels
+  ctx.font='11px "DM Sans",sans-serif';ctx.fillStyle='#9E9A90';ctx.textAlign='center';
+  for(let v=0.35;v<=0.60;v+=0.05) ctx.fillText(v.toFixed(2),px(v),plotB+16);
+  ctx.textAlign='right';
+  for(let v=0.35;v<=0.70;v+=0.05) ctx.fillText(v.toFixed(2),plotL-8,py(v)+4);
+
+  const scatter=[
+    {x:.36,y:.39},{x:.37,y:.42},{x:.38,y:.40},{x:.39,y:.43},
+    {x:.40,y:.44},{x:.41,y:.46},{x:.42,y:.45},{x:.43,y:.48},
+    {x:.44,y:.47},{x:.45,y:.50},{x:.46,y:.49},{x:.47,y:.52},
+    {x:.48,y:.51},{x:.49,y:.54},{x:.50,y:.55},{x:.51,y:.56},
+    {x:.52,y:.57},{x:.53,y:.59},
+  ];
+
+  // Regression
+  const n=scatter.length;
+  let sx=0,sy=0,sxy=0,sx2=0;
+  scatter.forEach(p=>{sx+=p.x;sy+=p.y;sxy+=p.x*p.y;sx2+=p.x*p.x});
+  const m=(n*sxy-sx*sy)/(n*sx2-sx*sx),b2=sy/n-m*sx/n;
+  function regY(x){return m*x+b2}
+
+  // Extrapolation zone
+  ctx.fillStyle='#D85A30';ctx.globalAlpha=0.06;
+  ctx.fillRect(px(0.54),plotT,px(xMax)-px(0.54),plotH);ctx.globalAlpha=1;
+
+  // Regression line
+  ctx.strokeStyle='#378ADD';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(px(0.33),py(regY(0.33)));ctx.lineTo(px(0.62),py(regY(0.62)));ctx.stroke();
+  ctx.font='500 12px "DM Sans",sans-serif';ctx.fillStyle='#185FA5';ctx.textAlign='left';
+  ctx.fillText('Fitted regression',px(0.555),py(regY(0.555))-10);
+
+  // Data points
+  scatter.forEach(p=>{
+    ctx.beginPath();ctx.arc(px(p.x),py(p.y),4,0,Math.PI*2);
+    ctx.fillStyle='#1D9E75';ctx.fill();ctx.strokeStyle='#0F6E56';ctx.lineWidth=0.8;ctx.stroke();
+  });
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#085041';ctx.textAlign='left';
+  ctx.fillText('Analog day observations',px(0.36)+8,py(0.39)-10);
+
+  // Today's prediction
+  const todayX=0.58,todayPredY=regY(todayX),maxAY=0.59;
+
+  ctx.setLineDash([5,3]);ctx.strokeStyle='#D85A30';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(px(todayX),plotB);ctx.lineTo(px(todayX),py(todayPredY));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(px(todayX),py(todayPredY));ctx.lineTo(plotL,py(todayPredY));ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();ctx.arc(px(todayX),py(todayPredY),6,0,Math.PI*2);
+  ctx.fillStyle='#D85A30';ctx.fill();ctx.strokeStyle='#993C1D';ctx.lineWidth=1;ctx.stroke();
+
+  // Max analog line
+  ctx.setLineDash([3,3]);ctx.strokeStyle='#9E9A90';ctx.lineWidth=1;ctx.globalAlpha=0.5;
+  ctx.beginPath();ctx.moveTo(plotL,py(maxAY));ctx.lineTo(px(0.54),py(maxAY));ctx.stroke();
+  ctx.setLineDash([]);ctx.globalAlpha=1;
+
+  // Annotations
+  ctx.font='500 12px "DM Sans",sans-serif';ctx.fillStyle='#993C1D';ctx.textAlign='center';
+  ctx.fillText("Today's GCM value",px(todayX),plotB+28);
+  ctx.textAlign='left';ctx.font='12px "DM Sans",sans-serif';
+  ctx.fillText('Regression predicts: '+todayPredY.toFixed(2),plotL+8,py(todayPredY)-8);
+  ctx.fillStyle='#9E9A90';
+  ctx.fillText('Max from pure analogs: '+maxAY.toFixed(2),plotL+8,py(maxAY)-8);
+
+  ctx.font='11px "DM Sans",sans-serif';ctx.fillStyle='#993C1D';ctx.textAlign='center';ctx.globalAlpha=0.7;
+  ctx.fillText('Extrapolation',px(0.58),plotT+16);
+  ctx.fillText('zone',px(0.58),plotT+30);ctx.globalAlpha=1;
+
+  // Output
+  ctx.font='500 14px "DM Sans",sans-serif';ctx.fillStyle='#2A2926';ctx.textAlign='center';
+  ctx.fillText('Repeat for every pixel \u2192 constructed output',360,plotB+66);
+  ctx.font='12px "DM Sans",sans-serif';ctx.fillStyle='#6B6860';
+  ctx.fillText('Spatial detail from observations, with slight extrapolation from regression',360,plotB+84);
+
+  const outR=rng(999);const outputData=[];
+  for(let fy=0;fy<12;fy++)for(let fx=0;fx<12;fx++){
+    const cy=Math.floor(fy/3),cx=Math.floor(fx/3);
+    const base=gcm[cy*4+cx];
+    const r2=Math.abs(fx/11-fy/11)<0.25?0.10*(1-Math.abs(fx/11-fy/11)/0.25):-0.03;
+    outputData.push(clamp(base*1.05+0.02+r2+(outR()-0.5)*0.05));
+  }
+  drawGrid(ctx,outputData,12,360-60,plotB+94,10,{coarseBorders:true});
+
+  ctx.restore();
+}
+
+// ---- Init & resize ----
+function drawAll(){draw1();draw2();draw3()}
+drawAll();
+window.addEventListener('resize',drawAll);
+</script>
+
+</body>
+</html>
