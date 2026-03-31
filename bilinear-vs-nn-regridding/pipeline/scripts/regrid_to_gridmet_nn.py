@@ -1,9 +1,11 @@
 """
 regrid_to_gridmet_nn.py — Regrid bias-corrected MPI GCM from 100km -> 4km using NEAREST-NEIGHBOR.
 
-Nearest-neighbor variant of regrid_to_gridmet.py. All variables (including pr) use nearest-neighbor
-assignment instead of bilinear/conservative. Output .dat files go to:
-  C:/drops-of-resilience/week3/pipeline/data/nearest_neighbor/
+Nearest-neighbor variant of regrid_to_gridmet.py. Non-pr variables use nearest-neighbor
+assignment; pr uses conservative (same as the bilinear pipeline — mass-preserving coarse→fine).
+Output .dat files go to DOR_NN_DATA_DIR or, by default,
+  .../pipeline/data/nearest_neighbor/  (often a junction to a larger disk if C: is tight).
+Env: DOR_NN_DATA_DIR, DOR_MEMMAP_POOL_WORKERS (same as bilinear regrid).
 
 Source CMIP6 files expected in:
   C:/drops-of-resilience/week3/pipeline/source_bc/  (produced by crop_bc_mpi_local.py)
@@ -32,8 +34,12 @@ import matplotlib.colors as mcolors
 # ==========================================
 # CONFIGURATION
 # ==========================================
-OUTPUT_DIR = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\data\nearest_neighbor"
+_DEFAULT_NN_DATA = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\data\nearest_neighbor"
+OUTPUT_DIR = os.environ.get("DOR_NN_DATA_DIR", _DEFAULT_NN_DATA)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Match bilinear regrid: lower DOR_MEMMAP_POOL_WORKERS if RAM is tight.
+MEMMAP_POOL_WORKERS = int(os.environ.get("DOR_MEMMAP_POOL_WORKERS", "4"))
 
 PATHS = {
     "CMIP6":   r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\source_bc",
@@ -269,6 +275,68 @@ def process_chunk(args):
     return stats
 
 
+def _period_io_bytes(days: int, H: int, W: int) -> int:
+    return int(days) * 6 * H * W * np.dtype("float32").itemsize
+
+
+def _dat_family_ready(paths, days, H, W):
+    need = _period_io_bytes(days, H, W)
+    return all(os.path.isfile(p) and os.path.getsize(p) == need for p in paths)
+
+
+def _touch(path: str) -> None:
+    with open(path, "w", encoding="ascii") as f:
+        f.write("ok\n")
+
+
+def _allocate_memmap_replace(path, days, H, W):
+    """Create path.__build__, then atomically replace path. Preserves path if allocation fails (e.g. ENOSPC)."""
+    build = path + ".__build__"
+    if os.path.isfile(build):
+        os.remove(build)
+    try:
+        np.memmap(build, dtype="float32", mode="w+", shape=(days, 6, H, W))
+    except OSError as e:
+        if os.path.isfile(build):
+            try:
+                os.remove(build)
+            except OSError:
+                pass
+        raise RuntimeError(
+            f"Could not allocate {os.path.basename(path)} ({e!s}). "
+            "Free disk space; existing file was left unchanged."
+        ) from e
+    if os.path.isfile(path):
+        os.remove(path)
+    os.replace(build, path)
+
+
+def _allocate_memmap_pair_replace(paths, days, H, W):
+    """Two rasters (e.g. inputs + targets); both must allocate before replacing originals."""
+    builds = [p + ".__build__" for p in paths]
+    for b in builds:
+        if os.path.isfile(b):
+            os.remove(b)
+    try:
+        for b in builds:
+            np.memmap(b, dtype="float32", mode="w+", shape=(days, 6, H, W))
+    except OSError as e:
+        for b in builds:
+            if os.path.isfile(b):
+                try:
+                    os.remove(b)
+                except OSError:
+                    pass
+        raise RuntimeError(
+            f"Could not allocate historical .dat pair ({e!s}). "
+            "Free disk space; existing files were left unchanged."
+        ) from e
+    for p, b in zip(paths, builds):
+        if os.path.isfile(p):
+            os.remove(p)
+        os.replace(b, p)
+
+
 # ==========================================
 # MAIN
 # ==========================================
@@ -338,55 +406,138 @@ if __name__ == "__main__":
     # ── PERIOD 1: EARLY HISTORICAL (1850-1980) ──
     days_early = get_days_count(EARLY_START, EARLY_END)
     f_in_early = os.path.join(OUTPUT_DIR, "cmip6_inputs_18500101-19801231.dat")
-    np.memmap(f_in_early, dtype='float32', mode='w+', shape=(days_early, 6, H, W))
-    tasks_early = []
-    curr, c_date = 0, pd.Timestamp(EARLY_START)
-    while curr < days_early:
-        chunk = 366 if c_date.is_leap_year else 365
-        if curr + chunk > days_early: chunk = days_early - curr
-        tasks_early.append(("early_hist", curr, chunk, str(c_date.date()),
-                            hist_regridded_paths, f_in_early, None,
-                            days_early, "1850-01-01", H, W))
-        curr += chunk; c_date += pd.Timedelta(days=chunk)
-    print(f"Processing Early Historical ({EARLY_START} to {EARLY_END}, {days_early} days)...")
-    with ProcessPoolExecutor(max_workers=4) as ex:
-        list(tqdm(ex.map(process_chunk, tasks_early), total=len(tasks_early)))
+    mark_early = os.path.join(OUTPUT_DIR, "period_early_18500101_19801231.io.ok")
+    if _dat_family_ready([f_in_early], days_early, H, W):
+        if os.path.isfile(mark_early):
+            print(f"[SKIP] Early historical .dat already complete ({mark_early}).")
+        else:
+            print(
+                "[NOTE] Early historical .dat matches expected size but has no completion marker; "
+                f"writing {mark_early} (legacy run)."
+            )
+            _touch(mark_early)
+    else:
+        if os.path.isfile(mark_early):
+            os.remove(mark_early)
+        _allocate_memmap_replace(f_in_early, days_early, H, W)
+        tasks_early = []
+        curr, c_date = 0, pd.Timestamp(EARLY_START)
+        while curr < days_early:
+            chunk = 366 if c_date.is_leap_year else 365
+            if curr + chunk > days_early:
+                chunk = days_early - curr
+            tasks_early.append(
+                (
+                    "early_hist",
+                    curr,
+                    chunk,
+                    str(c_date.date()),
+                    hist_regridded_paths,
+                    f_in_early,
+                    None,
+                    days_early,
+                    "1850-01-01",
+                    H,
+                    W,
+                )
+            )
+            curr += chunk
+            c_date += pd.Timedelta(days=chunk)
+        print(f"Processing Early Historical ({EARLY_START} to {EARLY_END}, {days_early} days)...")
+        with ProcessPoolExecutor(max_workers=MEMMAP_POOL_WORKERS) as ex:
+            list(tqdm(ex.map(process_chunk, tasks_early), total=len(tasks_early)))
+        _touch(mark_early)
 
     # ── PERIOD 2: HISTORICAL (1981-2014) ──
     days_h = get_days_count(HIST_START, HIST_END)
     f_in = os.path.join(OUTPUT_DIR, "cmip6_inputs_19810101-20141231.dat")
     f_tar = os.path.join(OUTPUT_DIR, "gridmet_targets_19810101-20141231.dat")
-    np.memmap(f_in, dtype='float32', mode='w+', shape=(days_h, 6, H, W))
-    np.memmap(f_tar, dtype='float32', mode='w+', shape=(days_h, 6, H, W))
-    tasks_hist = []
-    curr, c_date = 0, pd.Timestamp(HIST_START)
-    while curr < days_h:
-        chunk = 366 if c_date.is_leap_year else 365
-        if curr + chunk > days_h: chunk = days_h - curr
-        tasks_hist.append(("hist", curr, chunk, str(c_date.date()),
-                           hist_regridded_paths, f_in, f_tar,
-                           days_h, "1850-01-01", H, W))
-        curr += chunk; c_date += pd.Timedelta(days=chunk)
-    print(f"Processing Historical ({HIST_START} to {HIST_END}, {days_h} days)...")
-    with ProcessPoolExecutor(max_workers=4) as ex:
-        list(tqdm(ex.map(process_chunk, tasks_hist), total=len(tasks_hist)))
+    mark_hist = os.path.join(OUTPUT_DIR, "period_19810101_20141231_hist.io.ok")
+    if _dat_family_ready([f_in, f_tar], days_h, H, W):
+        if os.path.isfile(mark_hist):
+            print(f"[SKIP] Historical .dat pair already complete ({mark_hist}).")
+        else:
+            print(
+                "[NOTE] Historical .dat files match expected size but have no completion marker; "
+                f"writing {mark_hist} (legacy run)."
+            )
+            _touch(mark_hist)
+    else:
+        if os.path.isfile(mark_hist):
+            os.remove(mark_hist)
+        _allocate_memmap_pair_replace([f_in, f_tar], days_h, H, W)
+        tasks_hist = []
+        curr, c_date = 0, pd.Timestamp(HIST_START)
+        while curr < days_h:
+            chunk = 366 if c_date.is_leap_year else 365
+            if curr + chunk > days_h:
+                chunk = days_h - curr
+            tasks_hist.append(
+                (
+                    "hist",
+                    curr,
+                    chunk,
+                    str(c_date.date()),
+                    hist_regridded_paths,
+                    f_in,
+                    f_tar,
+                    days_h,
+                    "1850-01-01",
+                    H,
+                    W,
+                )
+            )
+            curr += chunk
+            c_date += pd.Timedelta(days=chunk)
+        print(f"Processing Historical ({HIST_START} to {HIST_END}, {days_h} days)...")
+        with ProcessPoolExecutor(max_workers=MEMMAP_POOL_WORKERS) as ex:
+            list(tqdm(ex.map(process_chunk, tasks_hist), total=len(tasks_hist)))
+        _touch(mark_hist)
 
     # ── PERIOD 3: FUTURE (2015-2100) ──
     days_f = get_days_count(FUT_START, FUT_END)
     f_in_fut = os.path.join(OUTPUT_DIR, "cmip6_inputs_ssp585_20150101-21001231.dat")
-    np.memmap(f_in_fut, dtype='float32', mode='w+', shape=(days_f, 6, H, W))
-    tasks_fut = []
-    curr, c_date = 0, pd.Timestamp(FUT_START)
-    while curr < days_f:
-        chunk = 366 if c_date.is_leap_year else 365
-        if curr + chunk > days_f: chunk = days_f - curr
-        tasks_fut.append(("fut", curr, chunk, str(c_date.date()),
-                          fut_regridded_paths, f_in_fut, None,
-                          days_f, "2015-01-01", H, W))
-        curr += chunk; c_date += pd.Timedelta(days=chunk)
-    print(f"Processing Future ({FUT_START} to {FUT_END}, {days_f} days)...")
-    with ProcessPoolExecutor(max_workers=4) as ex:
-        list(tqdm(ex.map(process_chunk, tasks_fut), total=len(tasks_fut)))
+    mark_fut = os.path.join(OUTPUT_DIR, "period_ssp585_20150101_21001231.io.ok")
+    if _dat_family_ready([f_in_fut], days_f, H, W):
+        if os.path.isfile(mark_fut):
+            print(f"[SKIP] Future .dat already complete ({mark_fut}).")
+        else:
+            print(
+                "[NOTE] Future .dat matches expected size but has no completion marker; "
+                f"writing {mark_fut} (legacy run)."
+            )
+            _touch(mark_fut)
+    else:
+        if os.path.isfile(mark_fut):
+            os.remove(mark_fut)
+        _allocate_memmap_replace(f_in_fut, days_f, H, W)
+        tasks_fut = []
+        curr, c_date = 0, pd.Timestamp(FUT_START)
+        while curr < days_f:
+            chunk = 366 if c_date.is_leap_year else 365
+            if curr + chunk > days_f:
+                chunk = days_f - curr
+            tasks_fut.append(
+                (
+                    "fut",
+                    curr,
+                    chunk,
+                    str(c_date.date()),
+                    fut_regridded_paths,
+                    f_in_fut,
+                    None,
+                    days_f,
+                    "2015-01-01",
+                    H,
+                    W,
+                )
+            )
+            curr += chunk
+            c_date += pd.Timedelta(days=chunk)
+        print(f"Processing Future ({FUT_START} to {FUT_END}, {days_f} days)...")
+        with ProcessPoolExecutor(max_workers=MEMMAP_POOL_WORKERS) as ex:
+            list(tqdm(ex.map(process_chunk, tasks_fut), total=len(tasks_fut)))
+        _touch(mark_fut)
 
     print("\nSUCCESS. All three periods processed (nearest-neighbor).")
     print(f"  -> {f_in_early}")

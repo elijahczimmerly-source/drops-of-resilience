@@ -1,0 +1,370 @@
+[    0.0s | RAM 0.2 GB] =================================================================
+[    0.0s | RAM 0.2 GB] NEAREST-NEIGHBOR PATH: Stochastic Spatial Disaggregation
+[    0.0s | RAM 0.2 GB]   Device: cpu  |  Workers: 4  |  Grid: 216x192  |  TEST8_SEED=42
+[    0.0s | RAM 0.2 GB]   Input dir:  C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\data\nearest_neighbor
+[    0.0s | RAM 0.2 GB]   Output dir: C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\output\nearest_neighbor
+[    0.0s | RAM 0.2 GB] =================================================================
+[    0.0s | RAM 0.2 GB]   [RSDS] Calibrating (24 periods)...
+[    0.0s | RAM 0.2 GB]   [TASMAX] Calibrating (24 periods)...
+[    0.0s | RAM 0.2 GB]   [TASMIN] Calibrating (24 periods)...
+[    0.0s | RAM 0.2 GB]   [PR] Calibrating (24 periods)...
+[   20.0s | RAM 3.1 GB]   [tasmin] 1981-2014 (stoch): day      0/12418
+[   20.0s | RAM 3.1 GB]   [rsds] 1981-2014 (stoch): day      0/12418
+[   20.1s | RAM 3.1 GB]   [tasmax] 1981-2014 (stoch): day      0/12418
+[   21.4s | RAM 3.1 GB]   [pr] 1981-2014 (stoch): day      0/12418
+[   22.4s | RAM 3.4 GB]   [rsds] 1981-2014 (stoch): day   2000/12418
+[   22.5s | RAM 3.4 GB]   [tasmax] 1981-2014 (stoch): day   2000/12418
+[   22.5s | RAM 3.4 GB]   [tasmin] 1981-2014 (stoch): day   2000/12418
+[   23.9s | RAM 3.4 GB]   [pr] 1981-2014 (stoch): day   2000/12418
+[   24.9s | RAM 3.7 GB]   [rsds] 1981-2014 (stoch): day   4000/12418
+[   25.0s | RAM 3.7 GB]   [tasmax] 1981-2014 (stoch): day   4000/12418
+[   25.0s | RAM 3.7 GB]   [tasmin] 1981-2014 (stoch): day   4000/12418
+[   26.6s | RAM 3.7 GB]   [pr] 1981-2014 (stoch): day   4000/12418
+[   27.4s | RAM 4.0 GB]   [rsds] 1981-2014 (stoch): day   6000/12418
+[   27.5s | RAM 4.0 GB]   [tasmax] 1981-2014 (stoch): day   6000/12418
+[   27.5s | RAM 4.0 GB]   [tasmin] 1981-2014 (stoch): day   6000/12418
+[   29.2s | RAM 4.0 GB]   [pr] 1981-2014 (stoch): day   6000/12418
+[   30.0s | RAM 4.3 GB]   [rsds] 1981-2014 (stoch): day   8000/12418
+[   30.1s | RAM 4.3 GB]   [tasmax] 1981-2014 (stoch): day   8000/12418
+[   30.1s | RAM 4.3 GB]   [tasmin] 1981-2014 (stoch): day   8000/12418
+[   31.8s | RAM 4.3 GB]   [pr] 1981-2014 (stoch): day   8000/12418
+[   33.1s | RAM 4.8 GB]   [rsds] 1981-2014 (stoch): day  10000/12418
+[   33.3s | RAM 4.8 GB]   [tasmin] 1981-2014 (stoch): day  10000/12418
+[   33.3s | RAM 4.8 GB]   [tasmax] 1981-2014 (stoch): day  10000/12418
+[   35.0s | RAM 4.8 GB]   [pr] 1981-2014 (stoch): day  10000/12418
+[   37.2s | RAM 5.4 GB]   [rsds] 1981-2014 (stoch): day  12000/12418
+[   37.3s | RAM 5.4 GB]   [tasmin] 1981-2014 (stoch): day  12000/12418
+[   37.3s | RAM 5.4 GB]   [tasmax] 1981-2014 (stoch): day  12000/12418
+[   38.0s | RAM 5.5 GB]   [rsds] 1981-2014 (stoch): done (12418 days)
+[   38.0s | RAM 5.5 GB]   [rsds] 1850-1980: day      0/47847
+[   38.1s | RAM 5.5 GB]   [tasmin] 1981-2014 (stoch): done (12418 days)
+[   38.1s | RAM 5.5 GB]   [tasmin] 1850-1980: day      0/47847
+[   38.1s | RAM 5.5 GB]   [tasmax] 1981-2014 (stoch): done (12418 days)
+[   38.2s | RAM 5.5 GB]   [tasmax] 1850-1980: day      0/47847
+[   39.0s | RAM 5.3 GB]   [pr] 1981-2014 (stoch): day  12000/12418
+[   40.1s | RAM 5.2 GB]   [pr] 1981-2014 (stoch): done (12418 days)
+[   40.1s | RAM 5.2 GB]   [pr] 1850-1980: day      0/47847
+[   41.8s | RAM 5.6 GB]   [tasmin] 1850-1980: day   2000/47847
+[   41.8s | RAM 5.1 GB]   [rsds] 1850-1980: day   2000/47847
+[   41.8s | RAM 5.6 GB]   [tasmax] 1850-1980: day   2000/47847
+[   43.8s | RAM 5.7 GB]   [pr] 1850-1980: day   2000/47847
+[   45.4s | RAM 5.2 GB]   [rsds] 1850-1980: day   4000/47847
+[   45.4s | RAM 5.7 GB]   [tasmax] 1850-1980: day   4000/47847
+[   45.4s | RAM 5.7 GB]   [tasmin] 1850-1980: day   4000/47847
+[   47.8s | RAM 6.2 GB]   [pr] 1850-1980: day   4000/47847
+[   49.2s | RAM 5.7 GB]   [rsds] 1850-1980: day   6000/47847
+[   49.2s | RAM 6.1 GB]   [tasmin] 1850-1980: day   6000/47847
+[   49.2s | RAM 6.1 GB]   [tasmax] 1850-1980: day   6000/47847
+[   51.9s | RAM 6.0 GB]   [pr] 1850-1980: day   6000/47847
+[   53.3s | RAM 5.0 GB]   [rsds] 1850-1980: day   8000/47847
+[   53.3s | RAM 5.6 GB]   [tasmin] 1850-1980: day   8000/47847
+[   53.3s | RAM 5.8 GB]   [tasmax] 1850-1980: day   8000/47847
+[   55.8s | RAM 6.4 GB]   [pr] 1850-1980: day   8000/47847
+[   57.2s | RAM 5.6 GB]   [tasmin] 1850-1980: day  10000/47847
+[   57.2s | RAM 4.9 GB]   [rsds] 1850-1980: day  10000/47847
+[   57.2s | RAM 6.1 GB]   [tasmax] 1850-1980: day  10000/47847
+[   59.9s | RAM 6.3 GB]   [pr] 1850-1980: day  10000/47847
+[   61.4s | RAM 4.7 GB]   [rsds] 1850-1980: day  12000/47847
+[   61.4s | RAM 5.1 GB]   [tasmax] 1850-1980: day  12000/47847
+[   61.4s | RAM 5.1 GB]   [tasmin] 1850-1980: day  12000/47847
+[   63.9s | RAM 6.8 GB]   [pr] 1850-1980: day  12000/47847
+[   65.4s | RAM 5.4 GB]   [tasmin] 1850-1980: day  14000/47847
+[   65.4s | RAM 5.1 GB]   [rsds] 1850-1980: day  14000/47847
+[   65.4s | RAM 5.3 GB]   [tasmax] 1850-1980: day  14000/47847
+[   68.1s | RAM 7.2 GB]   [pr] 1850-1980: day  14000/47847
+[   69.5s | RAM 5.2 GB]   [tasmin] 1850-1980: day  16000/47847
+[   69.5s | RAM 5.2 GB]   [rsds] 1850-1980: day  16000/47847
+[   69.6s | RAM 5.2 GB]   [tasmax] 1850-1980: day  16000/47847
+[   72.3s | RAM 5.7 GB]   [pr] 1850-1980: day  16000/47847
+[   73.7s | RAM 4.9 GB]   [rsds] 1850-1980: day  18000/47847
+[   73.7s | RAM 4.6 GB]   [tasmin] 1850-1980: day  18000/47847
+[   73.7s | RAM 4.6 GB]   [tasmax] 1850-1980: day  18000/47847
+[   76.3s | RAM 5.0 GB]   [pr] 1850-1980: day  18000/47847
+[   77.7s | RAM 5.4 GB]   [rsds] 1850-1980: day  20000/47847
+[   77.7s | RAM 4.8 GB]   [tasmin] 1850-1980: day  20000/47847
+[   77.7s | RAM 4.8 GB]   [tasmax] 1850-1980: day  20000/47847
+[   80.3s | RAM 5.0 GB]   [pr] 1850-1980: day  20000/47847
+[   81.8s | RAM 5.4 GB]   [tasmax] 1850-1980: day  22000/47847
+[   81.8s | RAM 5.9 GB]   [rsds] 1850-1980: day  22000/47847
+[   81.8s | RAM 5.4 GB]   [tasmin] 1850-1980: day  22000/47847
+[   84.5s | RAM 5.3 GB]   [pr] 1850-1980: day  22000/47847
+[   86.0s | RAM 6.1 GB]   [rsds] 1850-1980: day  24000/47847
+[   86.0s | RAM 5.3 GB]   [tasmin] 1850-1980: day  24000/47847
+[   86.0s | RAM 5.3 GB]   [tasmax] 1850-1980: day  24000/47847
+[   88.8s | RAM 5.7 GB]   [pr] 1850-1980: day  24000/47847
+[   90.3s | RAM 6.2 GB]   [rsds] 1850-1980: day  26000/47847
+[   90.3s | RAM 5.7 GB]   [tasmax] 1850-1980: day  26000/47847
+[   90.3s | RAM 5.6 GB]   [tasmin] 1850-1980: day  26000/47847
+[   92.9s | RAM 5.8 GB]   [pr] 1850-1980: day  26000/47847
+[   94.4s | RAM 6.7 GB]   [rsds] 1850-1980: day  28000/47847
+[   94.4s | RAM 5.4 GB]   [tasmin] 1850-1980: day  28000/47847
+[   94.4s | RAM 5.4 GB]   [tasmax] 1850-1980: day  28000/47847
+[   97.0s | RAM 5.7 GB]   [pr] 1850-1980: day  28000/47847
+[   98.5s | RAM 5.3 GB]   [tasmax] 1850-1980: day  30000/47847
+[   98.5s | RAM 5.2 GB]   [tasmin] 1850-1980: day  30000/47847
+[   98.5s | RAM 6.4 GB]   [rsds] 1850-1980: day  30000/47847
+[  101.2s | RAM 5.2 GB]   [pr] 1850-1980: day  30000/47847
+[  102.7s | RAM 5.0 GB]   [tasmax] 1850-1980: day  32000/47847
+[  102.7s | RAM 5.0 GB]   [tasmin] 1850-1980: day  32000/47847
+[  102.7s | RAM 6.5 GB]   [rsds] 1850-1980: day  32000/47847
+[  105.3s | RAM 5.1 GB]   [pr] 1850-1980: day  32000/47847
+[  106.7s | RAM 4.8 GB]   [tasmax] 1850-1980: day  34000/47847
+[  106.7s | RAM 6.3 GB]   [rsds] 1850-1980: day  34000/47847
+[  106.7s | RAM 4.7 GB]   [tasmin] 1850-1980: day  34000/47847
+[  109.2s | RAM 4.8 GB]   [pr] 1850-1980: day  34000/47847
+[  110.8s | RAM 6.5 GB]   [rsds] 1850-1980: day  36000/47847
+[  110.8s | RAM 4.2 GB]   [tasmin] 1850-1980: day  36000/47847
+[  110.8s | RAM 4.2 GB]   [tasmax] 1850-1980: day  36000/47847
+[  113.3s | RAM 3.9 GB]   [pr] 1850-1980: day  36000/47847
+[  114.7s | RAM 7.0 GB]   [rsds] 1850-1980: day  38000/47847
+[  114.7s | RAM 4.1 GB]   [tasmin] 1850-1980: day  38000/47847
+[  114.7s | RAM 4.0 GB]   [tasmax] 1850-1980: day  38000/47847
+[  117.2s | RAM 4.4 GB]   [pr] 1850-1980: day  38000/47847
+[  118.7s | RAM 4.0 GB]   [tasmin] 1850-1980: day  40000/47847
+[  118.7s | RAM 6.6 GB]   [rsds] 1850-1980: day  40000/47847
+[  118.9s | RAM 3.9 GB]   [tasmax] 1850-1980: day  40000/47847
+[  121.3s | RAM 4.3 GB]   [pr] 1850-1980: day  40000/47847
+[  122.7s | RAM 7.1 GB]   [rsds] 1850-1980: day  42000/47847
+[  122.7s | RAM 4.4 GB]   [tasmin] 1850-1980: day  42000/47847
+[  122.9s | RAM 4.0 GB]   [tasmax] 1850-1980: day  42000/47847
+[  125.2s | RAM 4.7 GB]   [pr] 1850-1980: day  42000/47847
+[  126.7s | RAM 4.6 GB]   [tasmin] 1850-1980: day  44000/47847
+[  126.7s | RAM 6.9 GB]   [rsds] 1850-1980: day  44000/47847
+[  126.9s | RAM 4.0 GB]   [tasmax] 1850-1980: day  44000/47847
+[  129.3s | RAM 4.8 GB]   [pr] 1850-1980: day  44000/47847
+[  130.8s | RAM 4.6 GB]   [tasmin] 1850-1980: day  46000/47847
+[  130.8s | RAM 7.2 GB]   [rsds] 1850-1980: day  46000/47847
+[  130.9s | RAM 3.8 GB]   [tasmax] 1850-1980: day  46000/47847
+[  133.4s | RAM 4.8 GB]   [pr] 1850-1980: day  46000/47847
+[  134.5s | RAM 7.3 GB]   [rsds] 1850-1980: done (47847 days)
+[  134.5s | RAM 4.8 GB]   [tasmin] 1850-1980: done (47847 days)
+[  134.6s | RAM 4.1 GB]   [tasmax] 1850-1980: done (47847 days)
+[  136.6s | RAM 5.1 GB]   [pr] 1850-1980: done (47847 days)
+[  263.5s | RAM 0.1 GB]   [pr] 2015-2100: day      0/31411
+[  266.9s | RAM 0.7 GB]   [pr] 2015-2100: day   2000/31411
+[  270.4s | RAM 1.4 GB]   [pr] 2015-2100: day   4000/31411
+[  273.6s | RAM 2.0 GB]   [pr] 2015-2100: day   6000/31411
+[  276.9s | RAM 2.6 GB]   [pr] 2015-2100: day   8000/31411
+[  280.1s | RAM 3.2 GB]   [pr] 2015-2100: day  10000/31411
+[  283.3s | RAM 3.8 GB]   [pr] 2015-2100: day  12000/31411
+[  286.5s | RAM 4.5 GB]   [pr] 2015-2100: day  14000/31411
+[  289.8s | RAM 5.1 GB]   [pr] 2015-2100: day  16000/31411
+[  293.0s | RAM 5.7 GB]   [pr] 2015-2100: day  18000/31411
+[  296.3s | RAM 6.3 GB]   [pr] 2015-2100: day  20000/31411
+[  299.6s | RAM 7.0 GB]   [pr] 2015-2100: day  22000/31411
+[  302.8s | RAM 7.6 GB]   [pr] 2015-2100: day  24000/31411
+[  306.1s | RAM 8.2 GB]   [pr] 2015-2100: day  26000/31411
+[  309.3s | RAM 8.8 GB]   [pr] 2015-2100: day  28000/31411
+[  312.6s | RAM 9.4 GB]   [pr] 2015-2100: day  30000/31411
+[  314.8s | RAM 9.9 GB]   [pr] 2015-2100: done (31411 days)
+[  378.9s | RAM 0.1 GB]   [WIND] Calibrating (24 periods)...
+[  380.9s | RAM 1.9 GB] [MAIN] PR received
+[  398.2s | RAM 3.0 GB]   [wind] 1981-2014 (stoch): day      0/12418
+[  399.7s | RAM 3.3 GB]   [wind] 1981-2014 (stoch): day   2000/12418
+[  401.1s | RAM 3.6 GB]   [wind] 1981-2014 (stoch): day   4000/12418
+[  402.5s | RAM 3.9 GB]   [wind] 1981-2014 (stoch): day   6000/12418
+[  403.9s | RAM 4.2 GB]   [wind] 1981-2014 (stoch): day   8000/12418
+[  406.1s | RAM 4.7 GB]   [wind] 1981-2014 (stoch): day  10000/12418
+[  409.3s | RAM 5.3 GB]   [wind] 1981-2014 (stoch): day  12000/12418
+[  409.9s | RAM 5.4 GB]   [wind] 1981-2014 (stoch): done (12418 days)
+[  409.9s | RAM 5.4 GB]   [wind] 1850-1980: day      0/47847
+[  412.8s | RAM 6.0 GB]   [wind] 1850-1980: day   2000/47847
+[  414.0s | RAM 0.1 GB]   [rsds] 2015-2100: day      0/31411
+[  416.1s | RAM 6.6 GB]   [wind] 1850-1980: day   4000/47847
+[  417.6s | RAM 0.7 GB]   [rsds] 2015-2100: day   2000/31411
+[  419.4s | RAM 7.3 GB]   [wind] 1850-1980: day   6000/47847
+[  421.2s | RAM 1.4 GB]   [rsds] 2015-2100: day   4000/31411
+[  423.2s | RAM 7.9 GB]   [wind] 1850-1980: day   8000/47847
+[  424.7s | RAM 2.0 GB]   [rsds] 2015-2100: day   6000/31411
+[  426.6s | RAM 8.5 GB]   [wind] 1850-1980: day  10000/47847
+[  428.1s | RAM 2.6 GB]   [rsds] 2015-2100: day   8000/31411
+[  430.0s | RAM 9.1 GB]   [wind] 1850-1980: day  12000/47847
+[  431.6s | RAM 3.2 GB]   [rsds] 2015-2100: day  10000/31411
+[  433.6s | RAM 9.8 GB]   [wind] 1850-1980: day  14000/47847
+[  435.1s | RAM 3.8 GB]   [rsds] 2015-2100: day  12000/31411
+[  437.1s | RAM 10.4 GB]   [wind] 1850-1980: day  16000/47847
+[  438.7s | RAM 4.5 GB]   [rsds] 2015-2100: day  14000/31411
+[  440.6s | RAM 11.0 GB]   [wind] 1850-1980: day  18000/47847
+[  442.2s | RAM 5.1 GB]   [rsds] 2015-2100: day  16000/31411
+[  444.4s | RAM 11.6 GB]   [wind] 1850-1980: day  20000/47847
+[  445.7s | RAM 5.7 GB]   [rsds] 2015-2100: day  18000/31411
+[  447.8s | RAM 12.2 GB]   [wind] 1850-1980: day  22000/47847
+[  449.2s | RAM 6.0 GB]   [rsds] 2015-2100: day  20000/31411
+[  451.3s | RAM 12.4 GB]   [wind] 1850-1980: day  24000/47847
+[  452.7s | RAM 6.6 GB]   [rsds] 2015-2100: day  22000/31411
+[  454.8s | RAM 12.9 GB]   [wind] 1850-1980: day  26000/47847
+[  456.0s | RAM 7.3 GB]   [rsds] 2015-2100: day  24000/31411
+[  458.1s | RAM 13.4 GB]   [wind] 1850-1980: day  28000/47847
+[  459.4s | RAM 7.9 GB]   [rsds] 2015-2100: day  26000/31411
+[  461.9s | RAM 13.4 GB]   [wind] 1850-1980: day  30000/47847
+[  463.3s | RAM 7.9 GB]   [rsds] 2015-2100: day  28000/31411
+[  465.5s | RAM 13.5 GB]   [wind] 1850-1980: day  32000/47847
+[  466.7s | RAM 7.6 GB]   [rsds] 2015-2100: day  30000/31411
+[  468.8s | RAM 14.1 GB]   [wind] 1850-1980: day  34000/47847
+[  469.1s | RAM 8.0 GB]   [rsds] 2015-2100: done (31411 days)
+[  472.0s | RAM 14.6 GB]   [wind] 1850-1980: day  36000/47847
+[  475.2s | RAM 15.0 GB]   [wind] 1850-1980: day  38000/47847
+[  478.4s | RAM 14.8 GB]   [wind] 1850-1980: day  40000/47847
+[  481.6s | RAM 14.8 GB]   [wind] 1850-1980: day  42000/47847
+[  484.8s | RAM 14.9 GB]   [wind] 1850-1980: day  44000/47847
+[  488.1s | RAM 14.9 GB]   [wind] 1850-1980: day  46000/47847
+[  491.1s | RAM 14.3 GB]   [wind] 1850-1980: done (47847 days)
+[  593.3s | RAM 0.1 GB]   [tasmax] 2015-2100: day      0/31411
+[  596.8s | RAM 0.7 GB]   [tasmax] 2015-2100: day   2000/31411
+[  600.0s | RAM 1.4 GB]   [tasmax] 2015-2100: day   4000/31411
+[  603.3s | RAM 2.0 GB]   [tasmax] 2015-2100: day   6000/31411
+[  606.6s | RAM 2.6 GB]   [tasmax] 2015-2100: day   8000/31411
+[  609.9s | RAM 3.2 GB]   [tasmax] 2015-2100: day  10000/31411
+[  613.1s | RAM 3.8 GB]   [tasmax] 2015-2100: day  12000/31411
+[  615.9s | RAM 0.1 GB]   [tasmin] 2015-2100: day      0/31411
+[  616.6s | RAM 4.5 GB]   [tasmax] 2015-2100: day  14000/31411
+[  619.7s | RAM 0.7 GB]   [tasmin] 2015-2100: day   2000/31411
+[  620.5s | RAM 5.1 GB]   [tasmax] 2015-2100: day  16000/31411
+[  623.3s | RAM 1.4 GB]   [tasmin] 2015-2100: day   4000/31411
+[  624.2s | RAM 5.7 GB]   [tasmax] 2015-2100: day  18000/31411
+[  627.0s | RAM 2.0 GB]   [tasmin] 2015-2100: day   6000/31411
+[  627.9s | RAM 6.3 GB]   [tasmax] 2015-2100: day  20000/31411
+[  630.8s | RAM 2.6 GB]   [tasmin] 2015-2100: day   8000/31411
+[  631.7s | RAM 7.0 GB]   [tasmax] 2015-2100: day  22000/31411
+[  634.6s | RAM 2.7 GB]   [tasmin] 2015-2100: day  10000/31411
+[  635.7s | RAM 6.5 GB]   [tasmax] 2015-2100: day  24000/31411
+[  636.4s | RAM 0.1 GB]   [HUSS] Calibrating (24 periods)...
+[  638.5s | RAM 1.9 GB] [MAIN] RSDS received
+[  638.5s | RAM 3.2 GB]   [tasmin] 2015-2100: day  12000/31411
+[  639.6s | RAM 7.0 GB]   [tasmax] 2015-2100: day  26000/31411
+[  642.3s | RAM 3.8 GB]   [tasmin] 2015-2100: day  14000/31411
+[  643.4s | RAM 7.6 GB]   [tasmax] 2015-2100: day  28000/31411
+[  646.0s | RAM 4.4 GB]   [tasmin] 2015-2100: day  16000/31411
+[  647.0s | RAM 8.3 GB]   [tasmax] 2015-2100: day  30000/31411
+[  649.7s | RAM 8.2 GB]   [tasmax] 2015-2100: done (31411 days)
+[  650.1s | RAM 4.5 GB]   [tasmin] 2015-2100: day  18000/31411
+[  653.3s | RAM 5.1 GB]   [tasmin] 2015-2100: day  20000/31411
+[  656.6s | RAM 5.7 GB]   [tasmin] 2015-2100: day  22000/31411
+[  656.7s | RAM 2.4 GB]   [huss] 1981-2014 (stoch): day      0/12418
+[  659.3s | RAM 2.5 GB]   [huss] 1981-2014 (stoch): day   2000/12418
+[  660.3s | RAM 5.8 GB]   [tasmin] 2015-2100: day  24000/31411
+[  662.1s | RAM 2.5 GB]   [huss] 1981-2014 (stoch): day   4000/12418
+[  663.9s | RAM 5.6 GB]   [tasmin] 2015-2100: day  26000/31411
+[  664.8s | RAM 2.9 GB]   [huss] 1981-2014 (stoch): day   6000/12418
+[  667.3s | RAM 3.4 GB]   [huss] 1981-2014 (stoch): day   8000/12418
+[  667.3s | RAM 6.3 GB]   [tasmin] 2015-2100: day  28000/31411
+[  670.2s | RAM 3.9 GB]   [huss] 1981-2014 (stoch): day  10000/12418
+[  670.7s | RAM 6.7 GB]   [tasmin] 2015-2100: day  30000/31411
+[  673.1s | RAM 7.0 GB]   [tasmin] 2015-2100: done (31411 days)
+[  673.6s | RAM 4.5 GB]   [huss] 1981-2014 (stoch): day  12000/12418
+[  674.2s | RAM 4.7 GB]   [huss] 1981-2014 (stoch): done (12418 days)
+[  674.2s | RAM 4.7 GB]   [huss] 1850-1980: day      0/47847
+[  677.1s | RAM 5.3 GB]   [huss] 1850-1980: day   2000/47847
+[  679.6s | RAM 5.9 GB]   [huss] 1850-1980: day   4000/47847
+[  682.2s | RAM 6.5 GB]   [huss] 1850-1980: day   6000/47847
+[  685.2s | RAM 7.1 GB]   [huss] 1850-1980: day   8000/47847
+[  688.1s | RAM 7.8 GB]   [huss] 1850-1980: day  10000/47847
+[  691.1s | RAM 8.4 GB]   [huss] 1850-1980: day  12000/47847
+[  694.1s | RAM 8.9 GB]   [huss] 1850-1980: day  14000/47847
+[  697.3s | RAM 9.4 GB]   [huss] 1850-1980: day  16000/47847
+[  700.3s | RAM 10.0 GB]   [huss] 1850-1980: day  18000/47847
+[  703.3s | RAM 10.6 GB]   [huss] 1850-1980: day  20000/47847
+[  706.3s | RAM 11.2 GB]   [huss] 1850-1980: day  22000/47847
+[  709.3s | RAM 11.8 GB]   [huss] 1850-1980: day  24000/47847
+[  712.4s | RAM 12.5 GB]   [huss] 1850-1980: day  26000/47847
+[  715.3s | RAM 13.1 GB]   [huss] 1850-1980: day  28000/47847
+[  718.4s | RAM 13.5 GB]   [huss] 1850-1980: day  30000/47847
+[  721.5s | RAM 13.5 GB]   [huss] 1850-1980: day  32000/47847
+[  724.5s | RAM 13.8 GB]   [huss] 1850-1980: day  34000/47847
+[  727.5s | RAM 13.9 GB]   [huss] 1850-1980: day  36000/47847
+[  730.5s | RAM 14.5 GB]   [huss] 1850-1980: day  38000/47847
+[  733.5s | RAM 15.1 GB]   [huss] 1850-1980: day  40000/47847
+[  736.5s | RAM 14.9 GB]   [huss] 1850-1980: day  42000/47847
+[  739.5s | RAM 15.4 GB]   [huss] 1850-1980: day  44000/47847
+[  742.5s | RAM 16.0 GB]   [huss] 1850-1980: day  46000/47847
+[  745.3s | RAM 16.5 GB]   [huss] 1850-1980: done (47847 days)
+[  748.0s | RAM 0.1 GB]   [wind] 2015-2100: day      0/31411
+[  751.2s | RAM 0.7 GB]   [wind] 2015-2100: day   2000/31411
+[  754.3s | RAM 1.4 GB]   [wind] 2015-2100: day   4000/31411
+[  757.4s | RAM 2.0 GB]   [wind] 2015-2100: day   6000/31411
+[  760.6s | RAM 2.6 GB]   [wind] 2015-2100: day   8000/31411
+[  763.7s | RAM 3.2 GB]   [wind] 2015-2100: day  10000/31411
+[  766.9s | RAM 3.8 GB]   [wind] 2015-2100: day  12000/31411
+[  770.0s | RAM 4.5 GB]   [wind] 2015-2100: day  14000/31411
+[  773.1s | RAM 5.1 GB]   [wind] 2015-2100: day  16000/31411
+[  776.3s | RAM 5.7 GB]   [wind] 2015-2100: day  18000/31411
+[  779.4s | RAM 6.3 GB]   [wind] 2015-2100: day  20000/31411
+[  782.6s | RAM 6.9 GB]   [wind] 2015-2100: day  22000/31411
+[  785.8s | RAM 7.1 GB]   [wind] 2015-2100: day  24000/31411
+[  789.0s | RAM 7.4 GB]   [wind] 2015-2100: day  26000/31411
+[  792.2s | RAM 7.6 GB]   [wind] 2015-2100: day  28000/31411
+[  795.4s | RAM 7.8 GB]   [wind] 2015-2100: day  30000/31411
+[  797.6s | RAM 7.9 GB]   [wind] 2015-2100: done (31411 days)
+[  961.4s | RAM 1.9 GB] [MAIN] TASMAX received
+[  963.6s | RAM 3.8 GB] [MAIN] WIND received
+[  975.6s | RAM 0.2 GB]   [huss] 2015-2100: day      0/31411
+[  978.7s | RAM 0.8 GB]   [huss] 2015-2100: day   2000/31411
+[  981.8s | RAM 1.4 GB]   [huss] 2015-2100: day   4000/31411
+[  984.8s | RAM 2.1 GB]   [huss] 2015-2100: day   6000/31411
+[  988.3s | RAM 2.7 GB]   [huss] 2015-2100: day   8000/31411
+[  991.7s | RAM 3.3 GB]   [huss] 2015-2100: day  10000/31411
+[  994.9s | RAM 3.9 GB]   [huss] 2015-2100: day  12000/31411
+[  998.0s | RAM 4.6 GB]   [huss] 2015-2100: day  14000/31411
+[ 1001.3s | RAM 5.2 GB]   [huss] 2015-2100: day  16000/31411
+[ 1003.1s | RAM 5.8 GB] [MAIN] TASMIN received
+[ 1004.9s | RAM 5.8 GB]   [huss] 2015-2100: day  18000/31411
+[ 1008.0s | RAM 6.4 GB]   [huss] 2015-2100: day  20000/31411
+[ 1011.1s | RAM 7.0 GB]   [huss] 2015-2100: day  22000/31411
+[ 1014.2s | RAM 7.7 GB]   [huss] 2015-2100: day  24000/31411
+[ 1017.3s | RAM 8.3 GB]   [huss] 2015-2100: day  26000/31411
+[ 1020.4s | RAM 8.9 GB]   [huss] 2015-2100: day  28000/31411
+[ 1023.4s | RAM 9.5 GB]   [huss] 2015-2100: day  30000/31411
+[ 1025.6s | RAM 10.0 GB]   [huss] 2015-2100: done (31411 days)
+[ 1168.9s | RAM 7.7 GB] [MAIN] HUSS received
+[ 1169.5s | RAM 7.7 GB] Building combined stack for Schaake...
+[ 1185.5s | RAM 23.1 GB] Applying Schaake Shuffle...
+[ 1185.5s | RAM 23.1 GB]   Schaake var 1/6 (pr)
+[ 1319.3s | RAM 1.9 GB]   Schaake var 2/6 (tasmax)
+[ 1376.6s | RAM 2.0 GB]   Schaake var 3/6 (tasmin)
+[ 1429.3s | RAM 2.0 GB]   Schaake var 4/6 (rsds)
+[ 1489.5s | RAM 2.0 GB]   Schaake var 5/6 (wind)
+[ 1549.6s | RAM 1.9 GB]   Schaake var 6/6 (huss)
+[ 1601.8s | RAM 3.5 GB] Schaake Shuffle done.
+[ 1601.9s | RAM 3.5 GB] 
+=================================================================
+[ 1601.9s | RAM 3.5 GB] TABLE 1 — DOMAIN-POOLED METRICS (2006-2014)
+[ 1601.9s | RAM 3.5 GB] =================================================================
+[ 1609.4s | RAM 4.5 GB]   pr done
+[ 1616.9s | RAM 5.6 GB]   tasmax done
+[ 1622.8s | RAM 6.6 GB]   tasmin done
+[ 1629.4s | RAM 7.6 GB]   rsds done
+[ 1634.8s | RAM 8.5 GB]   wind done
+[ 1639.8s | RAM 9.0 GB]   huss done
+Variable  Val_KGE  Val_RMSE_pooled  Val_Bias  Val_Ext99_Bias%  Val_Lag1_Obs  Val_Lag1_Sim  Val_Lag1_Err  Val_Spatial_Bias  Val_WDF_Obs%  Val_WDF_Sim%
+      pr 0.028897         9.322617 -0.109774       -13.436818      0.364103      0.382010      0.017907         -0.109773     32.396203     38.257689
+  tasmax 0.817283         7.885422  0.031433        -0.047822      0.962452      0.962857      0.000405          0.031415           NaN           NaN
+  tasmin 0.821059         7.059213 -0.089325         0.045015      0.968904      0.967310      0.001594         -0.089318           NaN           NaN
+    rsds 0.746652        58.475510 -2.497162         1.003067      0.923193      0.917174      0.006019         -2.497173           NaN           NaN
+    wind 0.062535         2.253403 -0.273216        -5.949122      0.449716      0.416387      0.033329         -0.273216           NaN           NaN
+    huss 0.786750         0.002844  0.000185        -0.142583      0.955786      0.960421      0.004636          0.000185           NaN           NaN
+[ 1639.9s | RAM 9.0 GB] 
+=================================================================
+[ 1639.9s | RAM 9.0 GB] TABLE 2 — PER-CELL METRICS (2006-2014)
+[ 1639.9s | RAM 9.0 GB] =================================================================
+[ 1642.9s | RAM 9.0 GB]   pr done
+[ 1645.9s | RAM 9.0 GB]   tasmax done
+[ 1649.0s | RAM 9.0 GB]   tasmin done
+[ 1652.0s | RAM 9.0 GB]   rsds done
+[ 1655.1s | RAM 9.0 GB]   wind done
+[ 1658.2s | RAM 9.0 GB]   huss done
+Variable  Val_RMSE_per_cell_mean  Val_RMSE_per_cell_median  Val_RMSE_per_cell_std  Val_RMSE_domain_mean_ts  Val_KGE_per_cell_mean  Val_KGE_per_cell_median  Val_r_per_cell_mean  Val_r_per_cell_median  Val_Bias_per_cell_mean  Val_Bias_per_cell_median  Val_n_cells
+      pr                9.202171                  9.289518               1.493727                 5.009741               0.024667                 0.021286             0.035743               0.033194               -0.109774                 -0.090924        41472
+  tasmax                7.881822                  7.925405               0.238238                 7.015901               0.807221                 0.809640             0.807535               0.809898                0.031413                  0.005387        41472
+  tasmin                7.056833                  7.099032               0.183282                 6.357685               0.812441                 0.815560             0.813452               0.816016               -0.089321                 -0.058989        41472
+    rsds               58.433946                 58.371502               2.204137                40.173172               0.744736                 0.743399             0.748266               0.748318               -2.497173                 -2.476573        41472
+    wind                2.248854                  2.240495               0.143115                 1.801525               0.030417                 0.022397             0.036265               0.028421               -0.273216                 -0.268988        41472
+    huss                0.002835                  0.002846               0.000229                 0.002463               0.782143                 0.782153             0.787554               0.787266                0.000185                  0.000169        41472
+[ 1658.2s | RAM 9.0 GB] Saving main-period outputs...
+[ 1679.4s | RAM 10.4 GB]   Saved pr
+[ 1776.4s | RAM 11.8 GB]   Saved tasmax
+[ 1873.2s | RAM 13.2 GB]   Saved tasmin
+[ 1928.1s | RAM 14.6 GB]   Saved rsds
+[ 1981.8s | RAM 14.5 GB]   Saved wind
+[ 2032.9s | RAM 14.6 GB]   Saved huss
+[ 2033.7s | RAM 3.2 GB] 
+Nearest-neighbor path complete. Total time: 33.89 mins.

@@ -10,12 +10,12 @@ import xarray as xr
 import os
 from concurrent.futures import ProcessPoolExecutor
 
-base_path = r"\\abe-cylo\modelsdev\Projects\WRC_DOR\CONUS"
-output_dir = r"C:\drops-of-resilience\week3\pipeline\gridmet_cropped"
+base_path = r"\\abe-cylo\modelsdev\Projects\WRC_DOR\Data\Gridmet-CONUS"
+output_dir = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\gridmet_cropped"
 os.makedirs(output_dir, exist_ok=True)
 
-# Iowa bounds + 0.5 degree buffer
-LAT_BOUNDS = [39.5, 44.5]
+# Iowa + 3-degree buffer (must match server Cropped_Iowa domain: 216 lat × 192 lon)
+LAT_BOUNDS = [37.5, 46.5]
 LON_BOUNDS = [-97.5, -89.5]
 
 gridmet_vars = ['vs', 'srad', 'sph', 'pr', 'tmmn', 'tmmx']

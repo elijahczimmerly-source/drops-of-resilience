@@ -6,6 +6,8 @@ Output goes to: C:/drops-of-resilience/week3/pipeline/output/bilinear/
 
 Env: TEST8_SEED (default 42), TEST8_MAX_WORKERS (default 4). Use the same TEST8_SEED as test8_nn.py
   to pair identical stochastic draws across regrid methods (inputs still differ).
+Run lock: output/bilinear/.test8_bilinear.lock (removed on clean exit or Ctrl+C). Delete manually if a run
+  was killed and the next start falsely thinks another job is alive.
 """
 
 import os
@@ -417,6 +419,9 @@ def apply_schaake_shuffle_stack(output_stack, target_stack):
 # MAIN
 # =============================================================
 if __name__ == "__main__":
+    from dor_test8_lock import acquire_run_lock
+
+    acquire_run_lock(os.path.join(OUT_DIR, ".test8_bilinear.lock"), "bilinear test8")
     _set_deterministic_seeds(RUN_SEED)
     _T0 = time.time()
     log("=" * 65)

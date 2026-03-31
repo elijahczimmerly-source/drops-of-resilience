@@ -4,6 +4,7 @@ Nearest-neighbor regrid path: inputs were regridded from 100km->4km via nearest-
 Output goes to: C:/drops-of-resilience/week3/pipeline/output/nearest_neighbor/
 
 Env: TEST8_SEED (default 42), TEST8_MAX_WORKERS (default 4), KMP_DUPLICATE_LIB_OK set if unset.
+Run lock: output/nearest_neighbor/.test8_nn.lock (removed on clean exit or Ctrl+C); delete if stale after a hard kill.
 """
 
 import os
@@ -58,7 +59,8 @@ N_DAYS_EARLY = len(DATES_EARLY)
 DATES_FUTURE = pd.date_range("2015-01-01", "2100-12-31")
 N_DAYS_FUTURE = len(DATES_FUTURE)
 
-BASE_DIR       = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\data\nearest_neighbor"
+_DEFAULT_NN_DATA = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\data\nearest_neighbor"
+BASE_DIR       = os.environ.get("DOR_NN_DATA_DIR", _DEFAULT_NN_DATA)
 F_INPUTS       = os.path.join(BASE_DIR, "cmip6_inputs_19810101-20141231.dat")
 F_TARGETS      = os.path.join(BASE_DIR, "gridmet_targets_19810101-20141231.dat")
 F_MASK         = os.path.join(BASE_DIR, "geo_mask.npy")
@@ -414,6 +416,9 @@ def apply_schaake_shuffle_stack(output_stack, target_stack):
 # MAIN
 # =============================================================
 if __name__ == "__main__":
+    from dor_test8_lock import acquire_run_lock
+
+    acquire_run_lock(os.path.join(OUT_DIR, ".test8_nn.lock"), "nearest-neighbor test8")
     _set_deterministic_seeds(RUN_SEED)
     _T0 = time.time()
     log("=" * 65)
