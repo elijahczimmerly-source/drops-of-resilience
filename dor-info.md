@@ -356,11 +356,17 @@ Both share the same three-step architecture:
 
 **Setup:** Two parallel pipelines using identical test8 logic, differing only in regridding method. Both used the same physics-corrected OTBC source data (`source_bc/`) for a fair comparison. Validated on 1981–2014 period, Iowa domain, MPI-ESM1-2-HR.
 
-**Report:** `C:\drops-of-resilience\bilinear-vs-nn-regridding\regrid_comparison_report.html`
+**Original report (non-pr variables only):** `C:\drops-of-resilience\bilinear-vs-nn-regridding\regrid_comparison_report.html`
 
-**Recommendation: Switch to NN for non-precipitation variables.** NN makes fewer assumptions than bilinear (no smoothing of GCM cell boundaries), matches or outperforms bilinear on the metrics that matter, and has a modest computational advantage. PR is excluded from the comparison — it must use conservative regridding regardless.
+**Recommendation: Switch to NN for non-precipitation variables.** NN makes fewer assumptions than bilinear (no smoothing of GCM cell boundaries), matches or outperforms bilinear on the metrics that matter, and has a modest computational advantage. For precipitation, use conservative regridding (see pr 3-way comparison below).
 
 **Literature review outcome:** No operational pipeline uses NN. Bilinear is the community default, but no one has quantitatively justified it — it is an unquestioned convention. ISIMIP3 is the only pipeline that questioned the interpolation method (bilinear vs conservative, qualitative only). Our experiment is the only quantitative comparison we've found. See `papers/nn-regridding-literature-review.md`.
+
+**Precipitation 3-way comparison:** In the main NN vs bilinear pipeline, both paths used conservative regridding for pr. To answer Bhuwan's question about whether NN or bilinear could work for pr, we ran a separate 3-way test: conservative, bilinear, and NN regridding of pr only, each fed through test8's multiplicative downscaler.
+
+**Result:** All three methods perform poorly on KGE (~0.03), Ext99 Bias% (−13% to −17%), and Lag1 Error (0.017–0.033) — all below "moderate" tier thresholds. Test8's stochastic downscaling overwhelms the regridding signal for precipitation. Bilinear shows ~3% lower RMSE, but this is a smoothing artifact: bilinear dampens variance (reducing squared error) while simultaneously worsening extreme underprediction (Ext99 −17.3% vs −13.3% for conservative/NN) and temporal autocorrelation (Lag1 error nearly 2x worse). The empirical metrics do not strongly differentiate the methods, but they offer no reason to deviate from the conventional practice of using conservative for pr, which is supported by physical reasoning (mass/flux conservation across grid cells).
+
+**Report:** `C:\drops-of-resilience\bilinear-vs-nn-regridding\combined_regrid_report.html` (comprehensive report combining all metrics, charts, and qualitative plots for the full NN vs bilinear comparison and the pr 3-way comparison).
 
 ### Key findings by variable
 
@@ -371,18 +377,20 @@ Both share the same three-step architecture:
 | rsds | Toss-up → NN | Same as tasmax. |
 | huss | Toss-up → NN | Same as tasmax. |
 | wind | NN | NN reduces Ext99 Bias% by 2.1pp (meaningful). Bilinear wins RMSE by 1.3% but Ext99 is more important for wind applications. |
-| pr | N/A | Excluded from comparison. PR must use conservative regridding (not bilinear or NN) to preserve total rainfall during coarse→fine remapping. |
+| pr | Conservative | 3-way comparison (conservative / bilinear / NN) showed all methods perform poorly on KGE, Ext99, and Lag1 — test8's stochastic downscaling overwhelms the regridding signal. Bilinear has ~3% lower RMSE (a smoothing artifact, not a genuine advantage). Conservative recommended on physical grounds (mass/flux conservation). |
 
 ### Notes on interpretation
 - **KGE and Ext99 are independent**: low KGE (poor day-to-day skill) does not invalidate an Ext99 result. Ext99 measures distributional properties across the full record; a model can fail at tracking specific days but still capture extremes reasonably.
 - All "meaningful" differences are small (≤2pp absolute, ≤10% relative). Regridding method is not the dominant source of error in this pipeline.
+- **RMSE can be misleading for pr**: bilinear's lower RMSE is a smoothing artifact — dampening variance reduces squared error but worsens extremes. For precipitation, Ext99 and Lag1 are more decision-relevant than RMSE.
+- **Stochastic threshold instability**: Some variable–metric pairs sit very close to the meaningfulness thresholds (0.5% for RMSE, 5.0% for Lag1). Because test8 includes a stochastic component, small run-to-run variations can flip borderline cases (e.g. tasmin RMSE, rsds Lag1) across the threshold without any change in regridding. Any metric near the threshold is effectively negligible regardless of which side it falls on.
 
 ---
 
 ## Open Questions / To Investigate
 
 - **Literature review: NN regridding** — **Substantially complete.** See `papers/nn-regridding-literature-review.md`. Conclusion: no operational pipeline uses NN; bilinear is the community default but no one has quantitatively justified it. ISIMIP3 is the only pipeline that questioned the interpolation method at all — they compared bilinear vs conservative qualitatively (one visual example, no skill metrics) and assumed smoother input to their stochastic step would be better. Our bilinear vs NN comparison is the only quantitative test on this question we've found, and it shows the methods are equivalent after test8. Awaiting Bhuwan's review.
-- **Bilinear vs NN comparison**: **Complete.** Recommendation: switch to NN (non-precip variables). PR excluded — uses conservative regridding. See report at `bilinear-vs-nn-regridding/regrid_comparison_report.html`.
+- **Bilinear vs NN comparison**: **Complete.** Recommendation: switch to NN (non-precip variables). PR 3-way comparison also complete — all methods perform poorly; conservative recommended on physical grounds. See combined report at `bilinear-vs-nn-regridding/combined_regrid_report.html`.
 - **Spatial downscaling quality** — Understand and preserve the critical components of test8's stochastic downscaling. Must be solid before exploring BC/downscaling ordering. (active)
 - **BC-first vs downscale-first**: Deferred per Bhuwan — do this after spatial downscaling is nailed down.
 - **PR and wind KGE near zero**: Acknowledged weakness. Root cause unknown.

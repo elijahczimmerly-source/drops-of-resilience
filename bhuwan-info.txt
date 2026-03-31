@@ -255,3 +255,109 @@ have a good night
  
 Thank you!
 
+"\\abe-cylo\modelsdev\Projects\WRC_DOR\Data"
+ 
+Elijah, I have added all the cropped data to this folder
+ 
+it has been cropped to Iowa
+ 
+it has dem, coastal distance  and windeffect too
+ 
+they might help with spatial downscaling if you want to explore. I have used DEM but I have not explored others extensively
+ 
+Sorry, I should've let you know but I already did the cropping and accomplished what I wanted to. Do we have a meeting scheduled in the next couple days? If not, we should call at some point so I can show you what I've done and you can give me feedback
+ 
+sure
+ 
+I am available tomorrow. does 3 pm work?
+ 
+Yes, that works
+ 
+great
+ 
+Elijah i am free rn if you want to chat. 3 also works though
+ 
+regrid_comparison_report.html
+ 
+KGE has 3 compnents
+ 
+https://gemini.google.com/share/f1febcd44742
+ 
+https://nex-gddp-cmip6.s3.us-west-2.amazonaws.com/index.html#NEX-GDDP-CMIP6/MPI-ESM1-2-HR/ssp585/r1i1p1f1/
+NEX-GDDP-CMIP6 | Data Browse
+ 
+Hi Bhuwan, looked at some other climate downscaling papers. Everyone that didn't use some kind of analog-based method used bilinear, and nobody questioned it except ISIMIP3, who considered conservative, and they didn't do any kind of quantitative testing. Their comparison was qualitative - they just assumed that providing smoother looking data as a starting point for their stochastic downscaling step would produce better outputs. So - no, nobody has used nearest neighbor for the regridding, but that's also not necessarily justified. I also looked into the analog-based approaches and generated some helpful visualizations to understand them, which are also attached. I concluded that some kind of deterministic regridding (bilinear interpolation or nearest neighbor) is definitely the right call for our pipeline. 
+nn-regridding-literature-review.md
+regridding_methods_visualizations.html
+ 
+Yes regarding is required. I'll look into the documents later. Thank you so much. I really appreciate your hard work and most importantly interest in this research 
+ 
+In the regriding document is the plot and the slider supposed to work
+ 
+Method 01's slider should work yes
+ 
+i looked through both documents. when do you wanna talk about it?
+ 
+I'm free today 12-1, 2:10-3:10, and after 4:20
+ 
+lets do 12 
+ 
+Ok, sounds good 
+ 
+You ready?
+ 
+yes
+ 
+spatial autocorrelation
+ 
+Here's the plots for bilinear vs nearest neighbor before and after test8 across 3 individual dates. For NN, some variables do have a little bit of visible blockiness, and some don't. When it's there, it's pretty faint. pr is still just conservative, it's mislabeled. I'll leave it up to you whether this blockiness is a flag that we should avoid NN, or if we should trust the quantitative metrics as a greater source of truth.
+Pre_Post_Test8_Gallery_Bhuwan.pdf
+ 
+This looks great. How about we do both and answer to the question. This will be interesting in climate community 
+ 
+And publish a paper 
+ 
+Can you check the extremes p99
+ 
+And implement nearest neighbour, bilinear and conservative all three for precip too
+ 
+Precip is the most important variable 
+ 
+Conservative regriding is the most expensive step. 
+ 
+Since downscaling is done one var at a time
+ 
+You can just run 3 cases for precip
+ 
+To save time 
+ 
+When you say "check the extremes p99", do you mean the Ext99 numbers we already have or spatial maps of the per-pixel 99th percentile, or something else?
+ 
+Yes ext99
+ 
+As in if these are better in nn
+ 
+If extremes are well captured in nn compared to bilinear 
+ 
+We already did this though, right? Are you just asking me to look at it again? As I recall, the difference was negligible for all except wind, where NN was a little better
+regrid_comparison_report 1.html
+ 
+yes but not for precipitaiton
+ 
+i want to compare nn, bilinear and conservative for precipitation too
+ 
+is nn possible for precip i am not sure if that is scientifically and statistically correct. but bilinear is done for precip like your report says
+ 
+Yes, we've never looked at bilinear or nn for pr. I can do that
+ 
+Everything's in here, including the new 3 way comparison for pr. I had deleted most of the data to save space, so I had to run the pipeline again. Because some of the stochastic elements, you'll notice the metric numbers for bilinear vs nn for everything except pr changed a bit since last time, but they're pretty similar.
+combined_regrid_report.html
+ 
+thanks Elijah. now lets work on spatial downscaling specifically for precipitation conserving the extremes and handling the wet day frequency. We can use any regriding method for now and run the finalized downscaling script on several regriding methods to compare. we can also compare bias correction before and after downscaling
+ 
+i have an external ssd if you want to use for storage.
+ 
+Okay, I agree. I'll let you know if I need the SSD
+ 
+sounds good
+
