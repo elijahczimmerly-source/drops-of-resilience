@@ -1,0 +1,28 @@
+{
+  "PR_USE_INTENSITY_RATIO": false,
+  "TEST8_MAIN_PERIOD_ONLY": true,
+  "TEST8_SEED": null,
+  "MAX_WORKERS": 1,
+  "EXPERIMENT_ROOT": "C:\\drops-of-resilience\\test8-v2-pr-intensity",
+  "BASE_DIR": "C:\\drops-of-resilience\\test8-v2-pr-intensity\\data",
+  "OUT_DIR": "C:\\drops-of-resilience\\test8-v2-pr-intensity\\output\\test8_v2_pr_intensity\\parity",
+  "H": 216,
+  "W": 192,
+  "N_DAYS": 12418,
+  "N_DAYS_EARLY": 47847,
+  "N_DAYS_FUTURE": 31411,
+  "VARS_INTERNAL": [
+    "pr",
+    "tasmax",
+    "tasmin",
+    "rsds",
+    "wind",
+    "huss"
+  ],
+  "server_source": "\\\\abe-cylo\\modelsdev\\Projects\\WRC_DOR\\Spatial_Downscaling\\Scripts\\test8_v2.py",
+  "server_lastwrite_iso": "2026-03-30T11:43:15-05:00",
+  "resid_cv_policy": "resid_cv from flat sim_base = in_m * spatial_ratio[p]; PR y_base may use intensity-blended ratio when PR_USE_INTENSITY_RATIO=1.",
+  "elapsed_minutes": 13.966894869009653,
+  "script_path": "C:\\drops-of-resilience\\test8-v2-pr-intensity\\scripts\\test8_v2_pr_intensity.py",
+  "script_sha256": "ca996f36215b57e825d323ad018c13a15c676c590cd726c226e91243ba59653e"
+}

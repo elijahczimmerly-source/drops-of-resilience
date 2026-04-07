@@ -1,6 +1,6 @@
 """
 test8_bilinear.py  —  Stochastic Spatial Disaggregation (Post-OTBC)
-Regrid path: pr via conservative (mass-preserving); other vars bilinear — same as server regrid_to_gridmet.py.
+Regrid path: all variables bilinear (including pr) via regrid_to_gridmet_bilinear.py (Iowa test8_v2 parity).
 Output goes to: C:/drops-of-resilience/week3/pipeline/output/bilinear/
   (Run regrid_to_gridmet_bilinear.py first to populate week3/pipeline/data/bilinear/.)
 

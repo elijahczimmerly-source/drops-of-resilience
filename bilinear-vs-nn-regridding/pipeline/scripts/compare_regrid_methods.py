@@ -260,7 +260,7 @@ html = f"""<!DOCTYPE html>
 
 <h1>Bilinear vs Nearest-Neighbor Regridding &mdash; Comparison Report</h1>
 <p class="note">MPI-ESM1-2-HR &bull; OTBC physics-corrected &bull; Iowa domain &bull; Validation period 1981&ndash;2014</p>
-<p class="note"><strong>Note on precipitation (pr):</strong> Both paths use conservative regridding for pr regardless of the bilinear/NN choice, because conservative is physically required to preserve total rainfall when moving from 100&nbsp;km to 4&nbsp;km. pr metrics are therefore identical between paths and are excluded from this comparison. The bilinear vs. NN distinction applies only to tasmax, tasmin, rsds, wind, and huss.</p>
+<p class="note"><strong>Note on precipitation (pr):</strong> Both paths use <strong>bilinear</strong> regridding for pr (same operator; Iowa test8_v2 parity). pr metrics are therefore identical between paths and are excluded from this comparison. The bilinear vs. NN distinction applies only to tasmax, tasmin, rsds, wind, and huss.</p>
 
 <h2>Summary</h2>
 <p>
@@ -276,8 +276,8 @@ while bilinear reduces RMSE by 1.3%. Since extreme wind behavior is more consequ
 downstream impact applications than mean error, NN is the preferred choice for wind.
 </p>
 <p>
-<strong>Overall recommendation:</strong> switch to NN regridding for all variables (retaining
-conservative for pr, as required). NN makes fewer assumptions than bilinear and matches or
+<strong>Overall recommendation:</strong> switch to NN regridding for tasmax, tasmin, rsds, wind, and huss
+(pr stays bilinear in both paths). NN makes fewer assumptions than bilinear and matches or
 outperforms it on the metrics that matter.
 </p>
 

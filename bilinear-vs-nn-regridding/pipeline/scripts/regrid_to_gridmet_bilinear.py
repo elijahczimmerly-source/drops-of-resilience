@@ -1,8 +1,8 @@
 """
 regrid_to_gridmet_bilinear.py — Regrid bias-corrected MPI GCM from 100km -> 4km (local pipeline).
 
-Matches server `regrid_to_gridmet.py` / dor-info.md: **conservative** for precipitation (ppt → pr)
-to preserve mass coarse→fine; **bilinear** (xarray-regrid `.linear`) for tasmax, tasmin, rsds, wind, huss.
+**Bilinear** for all variables including precipitation (ppt → pr), matching Bhuwan’s test8_v2 Iowa protocol.
+Other stacks may use conservative PR on the server; this local pipeline uses linear regrid for pr as well.
 GridMET provides target lat/lon only (no observational interpolation in this step).
 
 Output .dat files go to:
@@ -17,6 +17,8 @@ GridMET files (grid skeleton only) expected in:
 Memory: regridding runs in time chunks and streams to regridded_*.npy via memmap.
   DOR_REGRID_TIME_CHUNK — days per chunk (default tuned for ~32GB RAM; lower if OOM).
   DOR_MEMMAP_POOL_WORKERS — worker processes for .dat fill phase (default 4).
+  DOR_REGRID_OVERWRITE_PR=1 — delete regridded_hist_pr.npy / regridded_fut_pr.npy before the
+    existence check so PR is rebuilt (use after switching PR method or fixing a bad run).
 """
 
 import sys, io
@@ -69,9 +71,9 @@ GRIDMET_NAME_MAP = {
     "sph":  "sph",
 }
 
-# Match WRC_DOR regrid_to_gridmet.py: conservative PR (mass-preserving), bilinear elsewhere
+# All vars bilinear (xarray-regrid `.linear`), including pr — Iowa test8_v2 parity
 REGRID_METHOD = {
-    "ppt":  "conservative",
+    "ppt":  "bilinear",
     "tmax": "bilinear",
     "tmin": "bilinear",
     "srad": "bilinear",
@@ -82,7 +84,7 @@ REGRID_METHOD = {
 HIST_START, HIST_END = "1981-01-01", "2014-12-31"
 FUT_START, FUT_END   = "2015-01-01", "2100-12-31"
 
-# ~32GB RAM: default 200 days/chunk ≈2.2× fewer iterations than 90; conservative PR chunks cost more than bilinear.
+# ~32GB RAM: default 200 days/chunk ≈2.2× fewer iterations than 90.
 # If memory spikes, set DOR_REGRID_TIME_CHUNK=120 (or 90).
 REGRID_TIME_CHUNK = int(os.environ.get("DOR_REGRID_TIME_CHUNK", "200"))
 MEMMAP_POOL_WORKERS = int(os.environ.get("DOR_MEMMAP_POOL_WORKERS", "4"))
@@ -377,10 +379,22 @@ def process_chunk(args):
     return stats
 
 
+def _overwrite_pr_memmaps_if_requested():
+    flag = os.environ.get("DOR_REGRID_OVERWRITE_PR", "").strip().lower()
+    if flag not in ("1", "true", "yes"):
+        return
+    for name in ("regridded_hist_pr.npy", "regridded_fut_pr.npy"):
+        p = os.path.join(OUTPUT_DIR, name)
+        if os.path.isfile(p):
+            os.remove(p)
+            print(f"[DOR_REGRID_OVERWRITE_PR] Removed {p}")
+
+
 # ==========================================
 # MAIN
 # ==========================================
 if __name__ == "__main__":
+    _overwrite_pr_memmaps_if_requested()
     sample = robust_load_target("GridMET", "ppt", 2011, 0)
     H, W = sample.shape
     create_geo_static(H, W)
@@ -412,7 +426,7 @@ if __name__ == "__main__":
         print("[SKIP] All regridded .npy files already exist.")
     else:
         print(
-            f"Regridding CMIP6 (pr conservative, others bilinear; time_chunk={REGRID_TIME_CHUNK} days)..."
+            f"Regridding CMIP6 (all vars bilinear; time_chunk={REGRID_TIME_CHUNK} days)..."
         )
         for cmip_var, _, tar_var in VAR_MAP:
             h_path = os.path.join(OUTPUT_DIR, f"regridded_hist_{cmip_var}.npy")
@@ -522,7 +536,7 @@ if __name__ == "__main__":
     with ProcessPoolExecutor(max_workers=MEMMAP_POOL_WORKERS) as ex:
         list(tqdm(ex.map(process_chunk, tasks_fut), total=len(tasks_fut)))
 
-    print("\nSUCCESS. All three periods processed (pr conservative, others bilinear).")
+    print("\nSUCCESS. All three periods processed (all variables bilinear, including pr).")
     print(f"  -> {f_in_early}")
     print(f"  -> {f_in}")
     print(f"  -> {f_tar}")

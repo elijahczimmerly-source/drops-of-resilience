@@ -51,7 +51,7 @@ This is a climate downscaling and bias correction research project. The goal is 
 
 **Important:** The ML/DL downscaling scripts (stage1_ml_downscaling.py, stage1_dl_super_resolution.py, etc.) were experimental and **ultimately failed/abandoned**. Bhuwan confirmed: "Pure stochastic method works better than ML hybrids."
 
-**OTBC** — appears in code comments and Bhuwan's messages. Likely stands for Optimal Transport Bias Correction (the MV-QDM multivariate method used in step 2). **Unconfirmed — verify with Bhuwan or Bias_Correction scripts.**
+**OTBC** — Optimal Transport Bias Correction. Confirmed as the selected production BC method: `test8.py` and `test8_v2.py` both consume `mv_otbc` output (line 45 of test8_v2: `F_INPUTS_DIR = os.path.join(BASE_DIR, "MPI", "mv_otbc")`). Script headers: "Stochastic Spatial Disaggregation (Post-OTBC)". Among 8 evaluated BC methods, OTBC ranks #2 in Frobenius norm (inter-variable dependence), #3 in MAE, #4 in lag-1 error — consistently near the top with no weakness on any dimension.
 
 **Physics correction** — a post-processing step applied after bias correction to enforce physical consistency between variables. Confirmed from `generate_physics_impact_table.py` and file naming. Specifically corrects: (1) huss values that exceed physically plausible bounds, and (2) tasmax/tasmin inconsistencies (e.g., tasmax < tasmin). Tracked via "Violation_Rate_%" (% of space-time points needing correction) and "Tmax_Consistency_Fixed_%". Applied to all BC methods, not just OTBC. Physics-corrected outputs are stored separately from the plain BC outputs and are named `*_physics_corrected.npz`. Bhuwan described these as "bias corrected + physics corrected" — the version used in the existing pipeline (referenced in test7 context as "OTBC bias corrected and physics corrected outputs").
 
@@ -76,20 +76,38 @@ This is a climate downscaling and bias correction research project. The goal is 
 | `regrid_to_gridmet.py` | Regrids bias-corrected MPI GCM from 100km → 4km GridMET grid. Also builds `geo_static.npy` and `geo_mask.npy`. Uses xarray-regrid. |
 | `regrid_all_models_iowa.py` | Multi-model version of regrid_to_gridmet.py — handles all 5 GCMs (CMCC, EC, GFDL, MPI, MRI). Output to `E:\SpatialDownscaling\Data_Regrided_Gridmet_All_Models\`. References `test7_v2.py`. |
 | `test8.py` | **Current/latest stochastic downscaling script** — replaces test6. See details below. |
+| `test8_v2.py` | **Bhuwan's newest iteration** (last modified 3/30/2026). Reads from `Regridded_Iowa/MPI/mv_otbc/` (new data layout). Outputs to `E:\SpatialDownscaling\Iowa_Downscaled\v8_2\`. See detailed comparison with test8 below. |
 | `test6.py` | Previous stochastic downscaling script. Still on server. |
 | `test1.py`–`test5.py` | Earlier iterations of the stochastic downscaler (development history). |
 | `stage1_ml_downscaling.py` | ML downscaling (HistGradientBoosting) — **abandoned/experimental** |
+| `stage1_ml_downscaling_2step.py` | Two-step ML downscaling variant — **abandoned/experimental** |
 | `stage1_dl_super_resolution.py` | cGAN super-resolution — **abandoned/experimental** |
 | `stage1_dl_super_resolution_2stage.py` | Two-stage cGAN — **abandoned/experimental** |
+| `stage2_dl_2stage.py` | Second stage for 2-stage DL pipeline — **abandoned/experimental** |
 | `stage1_eqm_postprocessor.py` | EQM post-processing for ML outputs — **abandoned/experimental** |
 
 ### `\\abe-cylo\modelsdev\Projects\WRC_DOR\Bias_Correction\Scripts\`
 Only plotting/analysis scripts (no pipeline scripts):
 `plot_ensemble_consensus.py`, `plot_physics_analysis.py`, `generate_physics_impact_table.py`, `generate_publication_metrics.py`, `generate_publication_tables.py`, `plot_publication_figures_with_csv.py`, `plot_fig1.py`, `plot_metric_summary.py`
+Also contains `BiasCorrection_Bhuwan.pdf` — Bhuwan's bias correction results report.
+
+**Note:** All of Bhuwan's BC scripts import `evaluate_multivariate_v2.py` from `E:\SpatialDownscaling` (his local machine) and point to `\\10.27.15.33\cylo-bshah\Bias-Correction\` for CONUS-scale outputs — paths Elijah cannot access. The cropped Iowa data at `Data/Cropped_Iowa/` contains all 8 BC methods × 5 GCMs × 6 vars and is what we use for independent validation.
+
+### `C:\drops-of-resilience\bias-correction-validation\`
+Independent validation of all 8 BC methods over the Iowa crop (2006–2014). Self-contained HTML report at `report.html`; scripts in `scripts/`; metrics CSVs and plots in `output/`.
+
+**Key validation findings:**
+- All BC implementations behave as expected. Method rankings on Iowa are consistent with Bhuwan's CONUS-scale Tables 2–3.
+- OTBC confirmed as a strong all-around choice (see above).
+- BCCA has severe precipitation tail artifacts: compresses P99 by ~25 mm/d on Iowa (Bhuwan's CONUS result shows +18 mm/d inflation — opposite sign, same root cause: analogue blending distorts extremes, direction depends on domain size).
+- Physics correction eliminates all tasmax<tasmin violations. Huss saturation violations drop to near-zero; small residuals (~0.001–0.5%) remain for Spatial MBC due to numerical tolerance in qsat formula.
+- Iowa violation rates are much lower than CONUS (e.g., QDM: 0.048% vs 17%) because Iowa's continental climate rarely approaches psychrometric saturation limits.
+- GridMET observation regridding for validation used simple linear interpolation (convenience only). Bhuwan's production regridding (`regrid-gridmet-100km.py`) correctly uses xESMF conservative_normed for pr/flux and bilinear for state variables.
 
 ### Also note
+- **`test8_v2.py`** is now on the server (see table above). It reads from the new `Regridded_Iowa/` data layout rather than the older `Data_Regrided_Gridmet/` layout. Its `GRIDMET_DATA_DIR` points to `E:\SpatialDownscaling\Regridded_Iowa` on Bhuwan's machine, which mirrors `Data/Regridded_Iowa/` on the server.
 - There is a **test7 / test7_v2.py** referenced in `regrid_all_models_iowa.py` — not yet found or read. On Bhuwan's machine.
-- **`gridmet_paths.py`** — shared config module imported by `regrid_to_gridmet.py` and `test8.py`. Provides `GRIDMET_DATA_DIR`. On Bhuwan's machine, not on server. Not needed for local pipeline scripts (paths are hardcoded in those).
+- **`gridmet_paths.py`** — shared config module imported by `regrid_to_gridmet.py` and `test8.py`. Provides `GRIDMET_DATA_DIR`. On Bhuwan's machine, not on server. Not needed for local pipeline scripts (paths are hardcoded in those). Note: `test8_v2.py` does not import `gridmet_paths.py` — it hardcodes `GRIDMET_DATA_DIR` directly.
 
 ### Local pipeline scripts (`C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\scripts\`)
 | Script | Purpose |
@@ -101,6 +119,35 @@ Only plotting/analysis scripts (no pipeline scripts):
 | `crop_bc_mpi_local.py` | Crops physics-corrected OTBC MPI data from server to Iowa. Outputs to `source_bc/`. |
 | `crop_gridmet_local.py` | Crops GridMET CONUS .nc files from server to Iowa. Outputs to `gridmet_cropped/`. |
 | `compare_regrid_methods.py` | Reads the metric CSVs output by test8_bilinear.py and test8_nn.py and diffs them to produce `regrid_comparison_report.html`. Does not reimplement metric logic — all KGE/RMSE/Ext99/Lag1 calculation is in test8 itself (`calculate_pooled_metrics`, `calculate_per_cell_summary_metrics`). |
+
+## Local: test8_v2 PR intensity experiment
+
+Local fork of Bhuwan’s **test8_v2** with optional **PR-only** storm-intensity–dependent ratio scaling and an optional **blend** that scales `(ratio_ext - ratio) × weight` when intensity is on (full technique, blend sweep, and expectations vs results: [`test8-v2-pr-intensity/PR_INTENSITY_EXPLAINED.md`](test8-v2-pr-intensity/PR_INTENSITY_EXPLAINED.md)).
+
+| Path | Role |
+|------|------|
+| [`test8-v2-pr-intensity/scripts/test8_v2_pr_intensity.py`](test8-v2-pr-intensity/scripts/test8_v2_pr_intensity.py) | Main runner; writes under `output/test8_v2_pr_intensity/`. |
+| [`test8-v2-pr-intensity/scripts/sweep_pr_intensity_blend.py`](test8-v2-pr-intensity/scripts/sweep_pr_intensity_blend.py) | Optional helper to sweep `PR_INTENSITY_BLEND`; can record `blend_sweep_results.csv` next to the metric folders. |
+| [`test8-v2-pr-intensity/output/test8_v2_pr_intensity/`](test8-v2-pr-intensity/output/test8_v2_pr_intensity/) | Outputs: `parity/`, `experiment/` (or `experiment_<PR_INTENSITY_OUT_TAG>/`), and `experiment_blend*/` from blend sweeps; each holds `V8_Table1_Pooled_Metrics_Stochastic.csv`, `V8_Table2_…`, etc. |
+
+**Environment variables** (see script docstring for details):
+
+| Variable | Role |
+|----------|------|
+| `PR_USE_INTENSITY_RATIO` | `0` / `1`: parity (flat PR ratio) vs experiment (intensity-weighted PR ratio only). |
+| `PR_INTENSITY_BLEND` | Float in `[0, 2]`, default `1.0`; scales `(ratio_ext - ratio) × weight` when intensity is on. |
+| `PR_INTENSITY_OUT_TAG` | Optional suffix for the experiment output subdir (avoids overwrites during sweeps). |
+| `TEST8_MAIN_PERIOD_ONLY` | Default `1`: main 1981–2014 stack + metrics only. |
+| `TEST8_SEED` | Optional int; fixes RNG for reproducibility (may differ from Bhuwan’s published v2 numbers). |
+| `DOR_TEST8_V2_PR_INTENSITY_ROOT` | Optional absolute path to experiment root (`scripts/`, `data/`, `output/`). |
+| `DOR_TEST8_PR_DATA_DIR` | Optional override for memmap directory (default `<root>/data`). |
+
+**Reading metrics (PR vs other variables, multivariate):**
+
+- In code, intensity/blend applies only to **pr**; **Schaake** is applied **per variable** (loop over `v`), so the PR intensity change is **not** wired into tas/wind/etc. downscale formulas.
+- In **`V8_Table1_Pooled_Metrics_Stochastic.csv`**, comparing **`parity/`** vs **`experiment/`**: **pr** moves materially (e.g. KGE on the order of **~10–20%** relative change, RMSE **several percent** in the saved parity vs experiment runs). **tasmax, tasmin, rsds, wind, huss** show only **tiny** relative shifts (roughly **1e-4–1e-3** on KGE/RMSE) — not proportional to the pr change, so **not** a meaningful “pr drove the other rows” effect for those per-variable Table1 lines.
+- **Joint / multivariate summaries** that aggregate the full variable stack (e.g. Frobenius-style metrics in run logs) **do** move when **pr** moves, because **pr** is in the aggregate.
+- Do **not** expect non-pr Table1 rows to match **bit-for-bit** across separate runs unless **`TEST8_SEED`** (and run conditions) are aligned; without a fixed seed, small drift can appear on **all** variables.
 
 ---
 
@@ -139,6 +186,87 @@ Both `regrid_to_gridmet.py` and `test8.py` import `GRIDMET_DATA_DIR` from a shar
 
 ### Note on "no interpolation"
 Bhuwan said test8 uses "no interpolation" — this refers to not doing any *additional* interpolation/smoothing within the downscaling step itself. The inputs to test8 are still bilinearly interpolated (by `regrid_to_gridmet.py`). The comment in the code (line 238) says: "inputs = 100km OTBC bilinearly interpolated to 4km".
+
+---
+
+## test8_v2.py — Bhuwan's Latest Iteration
+
+**Last modified:** 3/30/2026
+**Data layout:** Reads from new `Regridded_Iowa/MPI/mv_otbc/` structure (not the old `Data_Regrided_Gridmet/` flat layout). `GRIDMET_DATA_DIR` hardcoded to `E:\SpatialDownscaling\Regridded_Iowa` (no `gridmet_paths.py` import).
+**Output dir:** `E:\SpatialDownscaling\Iowa_Downscaled\v8_2`
+
+### What changed vs test8
+
+| Change | test8 | test8_v2 | Impact |
+|--------|-------|----------|--------|
+| Noise correlation length | Fixed 5.0 px for all vars | **Variable-specific**: tasmax/rsds=100, wind=50, tasmin/huss/pr=35 | Much larger spatial correlation in noise — synoptic-scale for temp/radiation, mesoscale for pr/moisture. Noise structures are now physically-scaled rather than arbitrary. |
+| Continuous noise factor | 0.06 | **0.05** | Slightly less noise for additive vars |
+| Multiplicative noise factor | 0.15 | **0.16** | Slightly more noise for pr/wind |
+| Multiplicative noise clip | [0.1, 5.0] | **[0.1, 8.5]** | Allows much higher storm multipliers — explicitly "allow high storms" |
+| PR physical cap | None | **250 mm/day** | "Absolute physical cap for SWAT+ stability" — prevents runaway values for downstream WEPP/SWAT+ |
+| WDF threshold factor | 1.2 | **1.15** | Less aggressive wet-day censoring — "Reduced to ensure spatial texture continuity" |
+| Lapse rate | Single constant −6.5 °C/km | **Monthly dictionary** (−4.5 to −6.5 °C/km, varying by season) | More realistic: steeper in summer, shallower in winter |
+| `device` | Global variable | **Per-worker** | Fix for CUDA deadlocks with ProcessPoolExecutor |
+| `MAX_WORKERS` | 2 | **1** | More conservative parallelism |
+| Schaake Shuffle | Rank-based quantile mapping on full training set as one block | **Year-by-year, month-by-month** cycling through historical reference years | More granular temporal matching; applied to future & early historical periods too (not just 1981–2014) |
+| Data input to downscale loop | Single-variable slice `inputs[:, v_idx]` | **Full 6-variable array** `inputs` (method extracts its variable internally) | Refactored interface; same net effect |
+
+### PR-specific changes summary
+
+The changes most relevant to precipitation downscaling quality:
+1. **Noise correlation length 5→35 px**: noise spatial structures are now ~7× larger — mesoscale storm-sized patterns rather than pixel-scale noise
+2. **Noise clip [0.1, 5.0]→[0.1, 8.5]**: extreme storms can reach 8.5× the base ratio-scaled value (was capped at 5×)
+3. **WDF threshold 1.2→1.15**: fewer days censored to zero, preserving more light-rain events
+4. **250 mm/day cap**: physical safety valve for SWAT+ stability
+5. **Noise factor 0.15→0.16**: marginal increase in pr noise amplitude
+
+### Bhuwan's results (from Teams, April 2026)
+- test8_v2 **was better** on extremes and WDF metrics vs test8.
+- He used **bilinear interpolation for precipitation** (not conservative), and it **worked well for extremes**.
+- This reverses the earlier recommendation from the bilinear-vs-NN comparison (which used test8, not v2). With v2's wider noise clip and larger correlation length, bilinear apparently provides a better base for the multiplicative stochastic step to generate realistic extreme events — consistent with ISIMIP3's reasoning that smoother input to the stochastic step produces better output.
+- The script on the server **won't reproduce the exact same results** because he has "edited the weights for spatial autocorrelation" since uploading it. He is still tuning.
+
+### Metric comparison: test8 → test8_v2 → v9
+
+Results uploaded to `\\abe-cylo\...\Spatial_Downscaling\test8_v2\Iowa_Downscaled\v8_2\` and `v9\`.
+
+**PR (the focus variable):**
+
+| Metric | test8 (our baseline) | test8_v2 | v9 |
+|--------|---------------------|----------|-----|
+| KGE | ~0.03 | 0.022 | 0.023 |
+| Ext99 Bias% | ~-13.3% | **-6.7%** | **+1.3%** |
+| RMSE | ~9.5 | 9.50 | 10.09 |
+| WDF gap (Sim−Obs) | ~+6pp | **+3.3pp** | **+3.1pp** |
+| Lag1 Err | ~0.02 | 0.055 | **0.285** |
+
+**All variables (test8_v2):**
+
+| Variable | KGE | RMSE | Ext99 Bias% | Lag1 Err |
+|----------|-----|------|-------------|----------|
+| pr | 0.022 | 9.50 | -6.73% | 0.055 |
+| tasmax | 0.801 | 8.14 | -0.25% | 0.008 |
+| tasmin | 0.818 | 7.06 | +0.18% | 0.009 |
+| rsds | 0.764 | 56.60 | +0.82% | 0.004 |
+| wind | 0.080 | 2.22 | -7.34% | 0.053 |
+| huss | 0.775 | 0.0029 | +2.05% | 0.005 |
+
+**Key interpretation:**
+- test8_v2 cut pr Ext99 underprediction roughly in half and halved WDF overprediction. Solid improvement.
+- v9 nearly nailed Ext99 (+1.3%) but **destroyed temporal coherence** (Lag1 Err 0.285 — simulated lag-1 autocorrelation is 0.08 vs observed 0.36). Precipitation is essentially independent between days.
+- v9 was run on 3/24, six days **before** test8_v2 (3/30). Bhuwan likely tried something aggressive in v9, saw it fixed extremes but wrecked autocorrelation, then backed off to the more conservative v2 tuning. The v9 script is not on the server.
+- KGE stayed near zero across all versions — this is a fundamental limitation of the delta/ratio approach (the GCM determines daily patterns; the downscaler can't fix timing mismatches).
+- Bhuwan's current focus is tuning the spatial autocorrelation weights to find the sweet spot between v9's extreme-preserving aggressiveness and maintaining realistic temporal structure.
+
+### Unchanged from test8
+- Core logic (additive delta for continuous vars, multiplicative ratio for pr/wind)
+- Semi-monthly calibration windows (24 periods)
+- AR(1) temporal autocorrelation in noise (ρ=0.8 additive, ρ=0.5 multiplicative)
+- All metric engines (`calculate_pooled_metrics`, `calculate_per_cell_summary_metrics`, `calculate_climatology_summary`)
+- Train/test split (train 1981–2005, test 2006–2014)
+
+### `hist_temp_mean` field
+`StochasticSpatialDisaggregatorMultiplicative` has `self.hist_temp_mean = 288.15` — set in `__init__` but never referenced. Likely a placeholder for a planned temperature-dependent precipitation adjustment that hasn't been implemented yet.
 
 ---
 
@@ -198,6 +326,8 @@ Bhuwan said test8 uses "no interpolation" — this refers to not doing any *addi
 | test4 | Variance inflation factor scaling |
 | test5 | Iterated toward pure delta approach |
 | test6 | Pure delta anomaly mapping for continuous vars, dynamic ratio for PR/wind + full diagnostic plotting, publication-ready figures |
+| test8 | Removed test7's double-BC, added AR(1) noise, semi-monthly windows, Schaake Shuffle, lag-1 metric, deterministic mode |
+| test8_v2 | Variable-specific noise correlation lengths (physically scaled), wider storm multiplier clip, monthly lapse rates, month-by-month Schaake Shuffle, 250mm/day PR cap |
 
 **Note:** The agent's earlier description claiming test6 uses "bi-partite tail-matched scaling" and "linear regression" was inaccurate. The actual ContinuousDownscaler is a pure delta mapping (anomaly at slope 1.0). LinearRegression is imported but never called.
 
@@ -247,12 +377,23 @@ Data/
     └── ScenarioMIP-100km-CONUS_MRI-ESM2-0-Greg-Unit/
 ```
 
+Also on server under `Spatial_Downscaling/`:
+
+| Data | Location |
+|------|---------|
+| **Downscaled_Products/** — External pipeline outputs for verification | `Spatial_Downscaling\Downscaled_Products\` |
+| → LOCA2 | `LOCA2\{EC-Earth3, GFDL-CM4, MPI-ESM1-2-HR, MRI-ESM2-0}\{historical, ssp585}\{pr, tasmax, tasmin}\` — single .nc per var (1950–2014 historical) |
+| → NEX-GDDP-CMIP6 | `NEX-GDDP-CMIP6_Files\CMCC-ESM2\{historical, ssp585}\{huss, pr, rsds, sfcWind, tasmax, tasmin}\` — yearly .nc files |
+
 Also on server (older layout, still present):
 
 | Data | Location |
 |------|---------|
 | Regridded GridMET + CMIP6 inputs (84×96, .dat memmaps) — **output of regrid_to_gridmet.py** | `Spatial_Downscaling\Data_Regrided_Gridmet\` |
 | Wind effect static files | `Spatial_Downscaling\Data_WindEffect_Static\` |
+| test8_v2 input data (.dat memmaps, new folder layout with `MPI/mv_otbc/` subdir) | `Spatial_Downscaling\test8_v2\Regridded_Iowa\` |
+| test8_v2 output (v8_2): all 6 vars × 3 periods × shuffled variants + metric CSVs | `Spatial_Downscaling\test8_v2\Iowa_Downscaled\v8_2\` |
+| v9 output: all 6 vars (1981–2014 only) + metric CSVs. Script not on server. | `Spatial_Downscaling\test8_v2\Iowa_Downscaled\v9\` |
 | Physics-corrected BC outputs (CONUS scale, all 5 models, all BC methods) | `Bias_Correction\Data\Physics_Corrected_[MODEL]\` |
 | BC publication materials | `Bias_Correction\Data\Manuscript\`, `Publication_*\`, etc. |
 
@@ -265,6 +406,8 @@ Also on server (older layout, still present):
 | Regridded all-model inputs (.npy per model/var/scenario) | `E:\SpatialDownscaling\Data_Regrided_Gridmet_All_Models\` |
 | Downscaling output (test6) | `E:\SpatialDownscaling\Data_Stochastic_Kriging_Final\` |
 | Downscaling output (test8) | `E:\SpatialDownscaling\Data_Stochastic_Kriging_Final_v8\` |
+| Downscaling output (test8_v2) | `E:\SpatialDownscaling\Iowa_Downscaled\v8_2\` |
+| Regridded Iowa data (test8_v2 input) | `E:\SpatialDownscaling\Regridded_Iowa\` (local mirror of server `Data/Regridded_Iowa/`) |
 
 ### On .dat files vs .nc files
 The `.dat` files on the server (`Data_Regrided_Gridmet/`) are the *output* of `regrid_to_gridmet.py` — the final processed format ready for test8 to memmap. They contain GCM inputs and GridMET targets already aligned on the same 4km grid, shape `(N_days, 6, 84, 96)`, float32. No coordinate metadata.
@@ -377,7 +520,7 @@ Both share the same three-step architecture:
 | rsds | Toss-up → NN | Same as tasmax. |
 | huss | Toss-up → NN | Same as tasmax. |
 | wind | NN | NN reduces Ext99 Bias% by 2.1pp (meaningful). Bilinear wins RMSE by 1.3% but Ext99 is more important for wind applications. |
-| pr | Conservative | 3-way comparison (conservative / bilinear / NN) showed all methods perform poorly on KGE, Ext99, and Lag1 — test8's stochastic downscaling overwhelms the regridding signal. Bilinear has ~3% lower RMSE (a smoothing artifact, not a genuine advantage). Conservative recommended on physical grounds (mass/flux conservation). |
+| pr | Conservative (test8) / **Bilinear (test8_v2)** | 3-way comparison with test8 showed all methods perform poorly on KGE, Ext99, and Lag1. Conservative was recommended on physical grounds. **However**, Bhuwan reports that bilinear worked well for pr extremes when paired with test8_v2's parameters (wider noise clip, larger correlation length). The pr regridding question should be revisited with test8_v2. |
 
 ### Notes on interpretation
 - **KGE and Ext99 are independent**: low KGE (poor day-to-day skill) does not invalidate an Ext99 result. Ext99 measures distributional properties across the full record; a model can fail at tracking specific days but still capture extremes reasonably.
@@ -391,9 +534,11 @@ Both share the same three-step architecture:
 
 - **Literature review: NN regridding** — **Substantially complete.** See `papers/nn-regridding-literature-review.md`. Conclusion: no operational pipeline uses NN; bilinear is the community default but no one has quantitatively justified it. ISIMIP3 is the only pipeline that questioned the interpolation method at all — they compared bilinear vs conservative qualitatively (one visual example, no skill metrics) and assumed smoother input to their stochastic step would be better. Our bilinear vs NN comparison is the only quantitative test on this question we've found, and it shows the methods are equivalent after test8. Awaiting Bhuwan's review.
 - **Bilinear vs NN comparison**: **Complete.** Recommendation: switch to NN (non-precip variables). PR 3-way comparison also complete — all methods perform poorly; conservative recommended on physical grounds. See combined report at `bilinear-vs-nn-regridding/combined_regrid_report.html`.
-- **Spatial downscaling quality** — Understand and preserve the critical components of test8's stochastic downscaling. Must be solid before exploring BC/downscaling ordering. (active)
+- **Spatial downscaling quality for pr** — Active priority. test8_v2 improved Ext99 (-13%→-6.7%) and WDF gap (6pp→3.3pp). v9 nearly nailed Ext99 (+1.3%) but destroyed temporal coherence (Lag1 Err 0.285). Bhuwan is tuning spatial autocorrelation weights to find the sweet spot. **This is where Elijah should be contributing.**
+- **v9 script** — Not on server. Ask Bhuwan for it or for details on what structural changes it made vs test8_v2. The Ext99 improvement is dramatic; understanding why it wrecked Lag1 is the key to moving forward.
 - **BC-first vs downscale-first**: Deferred per Bhuwan — do this after spatial downscaling is nailed down.
-- **PR and wind KGE near zero**: Acknowledged weakness. Root cause unknown.
-- **Stochastic noise**: Has not been empirically tested for WEPP compatibility.
+- **PR and wind KGE near zero**: KGE measures day-to-day correspondence, which requires the GCM to track individual storm events — it can't at 100km. KGE stayed ~0.02 across test8, test8_v2, and v9. This won't improve until the temporal downscaling piece is addressed (i.e., correcting *which days* it rains, not just *how much*). Not the current focus — Bhuwan said to work on spatial downscaling first.
+- **Stochastic noise**: Has not been empirically tested for WEPP compatibility. test8_v2 added a 250 mm/day cap for SWAT+ stability.
 - **Terrain-based BC**: Not yet explored; Bhuwan suggested looking into whether DEM/slope/aspect are used in any existing BC methods.
-- **External pipeline verification**: Bhuwan wants to eventually compare against other organizations' pipeline outputs. Data not yet on server.
+- **External pipeline verification**: Bhuwan wants to compare against other organizations' pipeline outputs. **Data is now on server** at `Spatial_Downscaling\Downscaled_Products\`: LOCA2 (4 GCMs × pr/tasmax/tasmin) and NEX-GDDP-CMIP6 (CMCC-ESM2 × 6 vars). Not yet compared against our pipeline.
+- **Bias correction validation**: **Complete.** All 8 methods validated over Iowa crop. Report at `bias-correction-validation/report.html`. Implementations are correct; OTBC confirmed as the production method. See BC validation section above for details.

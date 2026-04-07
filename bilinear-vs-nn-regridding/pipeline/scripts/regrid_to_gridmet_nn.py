@@ -2,10 +2,11 @@
 regrid_to_gridmet_nn.py — Regrid bias-corrected MPI GCM from 100km -> 4km using NEAREST-NEIGHBOR.
 
 Nearest-neighbor variant of regrid_to_gridmet.py. Non-pr variables use nearest-neighbor
-assignment; pr uses conservative (same as the bilinear pipeline — mass-preserving coarse→fine).
+assignment; pr uses bilinear (same as regrid_to_gridmet_bilinear.py — Iowa test8_v2 parity).
 Output .dat files go to DOR_NN_DATA_DIR or, by default,
   .../pipeline/data/nearest_neighbor/  (often a junction to a larger disk if C: is tight).
-Env: DOR_NN_DATA_DIR, DOR_MEMMAP_POOL_WORKERS (same as bilinear regrid).
+Env: DOR_NN_DATA_DIR, DOR_MEMMAP_POOL_WORKERS (same as bilinear regrid),
+  DOR_REGRID_OVERWRITE_PR=1 (delete PR memmaps so pr is regridded on next run).
 
 Source CMIP6 files expected in:
   C:/drops-of-resilience/week3/pipeline/source_bc/  (produced by crop_bc_mpi_local.py)
@@ -67,9 +68,9 @@ GRIDMET_NAME_MAP = {
     "sph":  "sph",
 }
 
-# All variables use nearest-neighbor
+# Nearest-neighbor for state/flux vars; bilinear for PR (same operator as bilinear pipeline)
 REGRID_METHOD = {
-    "ppt":  "conservative",
+    "ppt":  "bilinear",
     "tmax": "nearest",
     "tmin": "nearest",
     "srad": "nearest",
@@ -79,6 +80,16 @@ REGRID_METHOD = {
 
 HIST_START, HIST_END = "1981-01-01", "2014-12-31"
 FUT_START, FUT_END   = "2015-01-01", "2100-12-31"
+
+
+def _method_label(tar_var):
+    m = REGRID_METHOD.get(tar_var, "nearest")
+    if m == "conservative":
+        return "conservative"
+    if m == "bilinear":
+        return "bilinear"
+    return "nearest-neighbor"
+
 
 def get_days_count(start, end):
     return (pd.Timestamp(end) - pd.Timestamp(start)).days + 1
@@ -337,10 +348,22 @@ def _allocate_memmap_pair_replace(paths, days, H, W):
         os.replace(b, p)
 
 
+def _overwrite_pr_memmaps_if_requested():
+    flag = os.environ.get("DOR_REGRID_OVERWRITE_PR", "").strip().lower()
+    if flag not in ("1", "true", "yes"):
+        return
+    for name in ("regridded_hist_pr.npy", "regridded_fut_pr.npy"):
+        p = os.path.join(OUTPUT_DIR, name)
+        if os.path.isfile(p):
+            os.remove(p)
+            print(f"[DOR_REGRID_OVERWRITE_PR] Removed {p}")
+
+
 # ==========================================
 # MAIN
 # ==========================================
 if __name__ == "__main__":
+    _overwrite_pr_memmaps_if_requested()
     sample = robust_load_target("GridMET", "ppt", 2011, 0)
     H, W = sample.shape
     create_geo_static(H, W)
@@ -371,7 +394,7 @@ if __name__ == "__main__":
     if all_hist_exist and all_fut_exist:
         print("[SKIP] All regridded .npy files already exist.")
     else:
-        print("Regridding CMIP6 Variables (nearest-neighbor)...")
+        print("Regridding CMIP6 (nearest-neighbor non-pr, bilinear pr)...")
         for cmip_var, _, tar_var in VAR_MAP:
             h_path = os.path.join(OUTPUT_DIR, f"regridded_hist_{cmip_var}.npy")
             if os.path.exists(h_path):
@@ -384,7 +407,7 @@ if __name__ == "__main__":
                     rg = regrid_var(da_h, dst_grid, REGRID_METHOD[tar_var])
                     np.save(h_path, rg.values.astype('float32'))
                     hist_regridded_paths[cmip_var] = (h_path, rg.shape)
-                    print(f"  [OK] {cmip_var} historical regridded (nearest-neighbor).")
+                    print(f"  [OK] {cmip_var} historical regridded ({_method_label(tar_var)}).")
                 else:
                     hist_regridded_paths[cmip_var] = (None, None)
 
@@ -399,7 +422,7 @@ if __name__ == "__main__":
                     rg = regrid_var(da_f, dst_grid, REGRID_METHOD[tar_var])
                     np.save(f_path, rg.values.astype('float32'))
                     fut_regridded_paths[cmip_var] = (f_path, arr.shape if 'arr' in dir() else rg.shape)
-                    print(f"  [OK] {cmip_var} future regridded (nearest-neighbor).")
+                    print(f"  [OK] {cmip_var} future regridded ({_method_label(tar_var)}).")
                 else:
                     fut_regridded_paths[cmip_var] = (None, None)
 
@@ -539,7 +562,7 @@ if __name__ == "__main__":
             list(tqdm(ex.map(process_chunk, tasks_fut), total=len(tasks_fut)))
         _touch(mark_fut)
 
-    print("\nSUCCESS. All three periods processed (nearest-neighbor).")
+    print("\nSUCCESS. All three periods processed (nearest-neighbor non-pr, bilinear pr).")
     print(f"  -> {f_in_early}")
     print(f"  -> {f_in}")
     print(f"  -> {f_tar}")

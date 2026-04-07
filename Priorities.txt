@@ -1,3 +1,7 @@
+Priority right now: benchmark (possibly final?) pipeline through spatial downscaling
+
+ON HOLD:
+
 1. figure out what the best way to improve spatial downscaling for pr
 
 Possibilities

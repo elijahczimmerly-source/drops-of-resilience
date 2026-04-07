@@ -5,9 +5,9 @@ Crops physics-corrected OTBC bias-corrected MPI data from the server to Iowa reg
 Input:  \\abe-cylo\modelsdev\Projects\WRC_DOR\Bias_Correction\Data\Physics_Corrected_MPI\
             mv_otbc_{scenario}_{startdate}\
             {var}_GROUP-huss-pr-rsds-tasmax-tasmin-wind_METHOD-mv_otbc_{scenario}_{daterange}_physics_corrected.npz
-Output: C:\drops-of-resilience\week3\pipeline\source_bc\
+Output: C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\source_bc\
             Cropped_{var}_GROUP-..._METHOD-mv_otbc_{scenario}_{daterange}.npz
-        (saved without _physics_corrected suffix so regrid_to_gridmet_nn.py can find them)
+        (saved without _physics_corrected suffix so regrid scripts can find them)
 """
 
 import numpy as np
@@ -15,7 +15,7 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 
 BASE_BC = r"\\abe-cylo\modelsdev\Projects\WRC_DOR\Bias_Correction\Data\Physics_Corrected_MPI"
-output_dir = r"C:\drops-of-resilience\week3\pipeline\source_bc"
+output_dir = r"C:\drops-of-resilience\bilinear-vs-nn-regridding\pipeline\source_bc"
 os.makedirs(output_dir, exist_ok=True)
 
 method = "mv_otbc"
@@ -34,7 +34,8 @@ variables = ['huss', 'pr', 'rsds', 'tasmax', 'tasmin', 'wind']
 
 def get_paths(var, scenario):
     start, end = SCENARIOS[scenario]
-    folder = f"{method}_{scenario}_{start}"
+    # Server layout (2026): mv_otbc_historical_GROUP-..._METHOD-mv_otbc_historical_18500101-20141231
+    folder = f"{method}_{scenario}_GROUP-{group}_METHOD-{method}_{scenario}_{start}-{end}"
     base_name = f"{var}_GROUP-{group}_METHOD-{method}_{scenario}_{start}-{end}"
     src_file  = base_name + "_physics_corrected.npz"
     src_path  = os.path.join(BASE_BC, folder, src_file)

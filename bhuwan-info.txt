@@ -361,3 +361,91 @@ Okay, I agree. I'll let you know if I need the SSD
  
 sounds good
 
+Elijah, do we need to meet to talk about anything? also how interested are you in writing? as in research articles to be published in peer reviewed journals
+ 
+It would be great if we could meet to talk about research opportunities for this summer. As for writing, I am definitely interested.
+ 
+sure
+ 
+when are you available
+ 
+I don't have a ton of time today. I could maybe meet between noon and  1, or after 6. Do you work on the weekends at all? I'm free pretty much all day Saturday and Sunday
+ 
+it's not urgent. but we can do Saturday around 10
+ 
+That work for me. When you said meet did you mean in person and if so where?
+ 
+whatever works for you. we can do in person too next week if you want
+ 
+I really don't have a preference
+ 
+alright lets chat Saturday 10 then. since you mentioned summer, you want to continue working through summer right?
+ 
+Yes, I do. And if that's not possible, then I would appreciate some advice about where I can find other opportunities 
+ 
+sure, i will discuss with ryan and let you know
+ 
+Thank you
+ 
+just to confirm, we're having a teams meeting at 10am?
+ 
+Yeah. I talked with Ryan the other day about you wanting to work through summer. He said it might be possible. We three need to do a meeting and discuss 
+ 
+Regarding today, did you make any progress on the spatial downscaling? That we can see and discuss. If not then let's not meet today. I'll set-up a meeting with you and Ryan next week 
+ 
+If you have any questions or need to discuss then we can meet too. 
+ 
+I haven't really made any progress, no, I've been pretty busy with my courses since Tuesday. I'm working right now, but I may not have anything to share by 10am
+ 
+Sure np. We can meet next week 
+ 
+When can the 3 of us have a meeting? I'm trying to nail down my summer plans, so the sooner the better
+ 
+Actually you can go ahead and schedule a meeting 
+ 
+Based on everyone's availability 
+ 
+Use outlook calendar or teams scheduling feature 
+ 
+Okay, will do
+ 
+How did test8_v2 do on the metrics? Extremes and WDF?
+ 
+It was better. I also used bilinear interpolation for precipitation 
+ 
+Which worked well for extremes
+ 
+How much better? Could I have the csv
+ 
+Sure. I'll upload the results 
+ 
+thanks
+ 
+I scheduled a meeting for you, me, and Ryan for 11am on Tuesday. I'd never used the teams meeting scheduler before so let me know if it looks okay
+ 
+Looks fine
+ 
+Got it
+ 
+Let me know when the results are uploaded. By the way, it looks like I can access some folders in the server that I wasn't able to before, such as \\abe-cylo\modelsdev\Projects\Bhuwan
+ 
+It's been copied right now
+ 
+In wrc dor under spatial downscaling 
+ 
+Test8_v2 folder
+ 
+Zimmerly, Elijah
+Let me know when the results are uploaded. By the way, it looks like I can access some folders in the server that I wasn't able to before, such as \\abe-cylo\modelsdev\Projects\Bhuwan
+This is my personal folder and doesn't have anything for this project 
+ 
+Oh
+ 
+The script might not produce similar results i have because i have edited the weights for spatial autocorrelation. I need to tune that for better results 
+ 
+\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2
+ 
+has the new results
+ 
+Thanks
+ 

@@ -2,7 +2,7 @@
 Qualitative maps: bilinear vs nearest-neighbor regridding vs GridMET (MPI OTBC, Iowa).
 
 Reads from WRC_DOR Data share (no local copy required). Excludes precipitation
-(conservative vs NN is a different comparison).
+(local bilinear pr matches both paths; pr_3way is a separate comparison).
 
 Usage (from repo root, with network path to \\\\abe-cylo\\... reachable):
   python bilinear-vs-nn-regridding/pipeline/scripts/plot_regrid_qualitative.py
@@ -45,7 +45,7 @@ CMIP_TO_GRIDMET = {
     "huss": "sph",
 }
 
-# Bilinear pipeline: conservative pr, bilinear others — we skip pr here.
+# Bilinear pipeline uses bilinear pr too — we still skip pr here (focus on tas/wind/huss maps).
 NON_PR_VARS = ("tasmax", "tasmin", "rsds", "wind", "huss")
 
 CMIP_START = pd.Timestamp("1850-01-01")
