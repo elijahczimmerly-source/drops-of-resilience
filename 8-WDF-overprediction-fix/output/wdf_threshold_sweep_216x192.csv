@@ -1,0 +1,4 @@
+PR_WDF_THRESHOLD_FACTOR,pr_Val_WDF_Sim%,pr_Val_WDF_Obs%,pr_Val_Ext99_Bias%,pr_Val_RMSE_pooled,pr_Val_KGE,pr_Val_Lag1_Err,pr_Val_Bias,wind_Val_Ext99_Bias%,wall_s,out_dir
+1.4,33.885608686862035,32.317395233232375,-0.053930003,9.907551,0.0241004017448125,0.0552932829783723,0.10179901,-7.3800335,1344.2,c:\drops-of-resilience\4-test8-v2-pr-intensity\output\test8_v2_pr_intensity\experiment_wdf_factor_1p40_216
+1.45,33.552726852291435,32.317395233232375,-0.053930003,9.908073,0.0241171220780973,0.055178945152161,0.09957552,-7.3800335,1350.5,c:\drops-of-resilience\4-test8-v2-pr-intensity\output\test8_v2_pr_intensity\experiment_wdf_factor_1p45_216
+1.5,33.23301836073438,32.317395233232375,-0.053930003,9.90859,0.0241334352382053,0.0550622551203549,0.097353935,-7.3800335,1358.7,c:\drops-of-resilience\4-test8-v2-pr-intensity\output\test8_v2_pr_intensity\experiment_wdf_factor_1p50_216

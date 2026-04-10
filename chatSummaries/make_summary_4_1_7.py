@@ -52,7 +52,9 @@ h1(
     "4/1/26 - 4/7/26  |  Topics: bias correction validation, BC method comparison, OTBC selection, "
     "physics correction, BCCA tail artifacts, conservative vs bilinear regridding, START-HERE onboarding, "
     "bcv scripts 01-08, MRI NPZ paths, WORKLOG, test8_v2 PR intensity fork, Table1 vs joint metrics, "
-    "dor-info PR intensity section"
+    "dor-info PR intensity section; product-comparison validation figures (GridMET vs DOR snapshots, "
+    "domain-mean time series, full-window and seasonal aggregated maps), figure folder layout, "
+    "interpreting Bhuwan's ask (snapshots vs time-mean maps), plan mode vs implementation, full plot run"
 )
 body("Chat link: [ENTER LINK HERE]")
 divider()
@@ -378,6 +380,106 @@ body(
     "PR intensity comparison folders under bilinear-vs-nn-regridding pipeline output. "
     "PR_INTENSITY_EXPLAINED.md revised for blend-on-delta clarity. Optional ranked metrics extract "
     "and Bhuwan-comparable column tables discussed in thread."
+)
+divider()
+
+# -- Section 16: Validation-period plots (product-comparison) -------------------
+h2("Product-comparison: validation-period figures vs GridMET")
+body(
+    "Work delivered: shared loader benchmark_io.load_aligned_stacks (align 2006-2014 with "
+    "load_obs / load_dor / load_loca2 / load_nex + align_to_obs_with_dates); plot_validation_period.py "
+    "for domain-mean daily time series (GridMET, DOR blend 0.65, LOCA2 on pr/tasmax/tasmin only, NEX) "
+    "and side-by-side maps. Snapshot dates from config plus calendar day of maximum domain-mean "
+    "observed pr."
+)
+quote(
+    "Individual-day maps answer: on real weather, does the field look like the target in pattern "
+    "and placement? Time-averaged maps answer: over the validation window, is there a systematic "
+    "spatial problem? Hand-picked days are standard for the first; seasonal or full-period means "
+    "are common for the second."
+)
+divider()
+
+# -- Section 17: Figure inventory (partial vs full run) -------------------------
+h2("Expected PNG counts vs what was on disk (UNC run interruptions)")
+body(
+    "Q: What should be in output/figures vs what is there? Expected: six validation_ts_<var>.png, "
+    "thirty validation_maps (six variables times five dates), after aggregation twelve more "
+    "(six mean + six seasonal). A partial run left only some variables; completing wind and huss "
+    "required a targeted second run, then a full script run produced six + thirty + twelve files."
+)
+divider()
+
+# -- Section 18: How to read the validation plots --------------------------------
+h2("What to look for so the validation plots 'look good'")
+quote(
+    "Time series: co-moving seasonality across products; DOR should track GridMET more closely "
+    "than LOCA2/NEX. Red flags: DOR wrong units, out of phase for months, or huge isolated spikes "
+    "on one line only."
+)
+quote(
+    "Maps (shared 2-98% color scale): same large-scale pattern left and right on the same day; "
+    "for pr, rain where it rains in obs. Red flags: systematic striping only on DOR, arbitrary "
+    "flip, one panel mostly NaN, repeatable geographic shift across dates."
+)
+body(
+    "For rsds, large NEX level offset vs GridMET can still be expected (documented elsewhere); "
+    "focus on spatial structure and DOR vs GridMET for the pipeline."
+)
+divider()
+
+# -- Section 19: What Bhuwan likely meant by validation period / side by side -----
+h2("Matching Bhuwan's wording: time series vs maps, aggregation")
+body(
+    "Q: Do these plots match 'plot the VALIDATION PERIOD for each var with the target side by side'?"
+)
+quote(
+    "Strong match if he meant: see the test window with obs next to your fields in space (maps) "
+    "and how the period tracks in domain mean (time series). Partial match if he meant every "
+    "product (LOCA2, NEX) also gets a map next to GridMET -- maps were DOR-only; LOCA2/NEX on "
+    "the time series only."
+)
+body(
+    "Q: Did he want the period without plotting individual days (averaging)? Domain-mean time "
+    "series already use every day. Maps need either picked days or temporal aggregation; "
+    "averaging over the window for maps is normal and often closer to 'validation period' "
+    "wording in space than a single Tuesday."
+)
+divider()
+
+# -- Section 20: Aggregated side-by-side maps (implementation) --------------------
+h2("Time-aggregated GridMET | DOR maps (config + script)")
+body(
+    "Implemented: FIG_VALIDATION_INDIVIDUAL_DAYS and FIG_VALIDATION_TIME_AGG under "
+    "output/figures/dor side-by-side/ (individual days vs time aggregated). "
+    "validation_agg_mean_<var>.png = nanmean over full 2006-2014; "
+    "validation_agg_seasonal_<var>.png = four rows (DJF/MAM/JJA/SON), each row GridMET | DOR "
+    "with per-row 2-98% scaling. Refactor: _pair_vmin_vmax, _save_obs_dor_pair. README and WORKLOG "
+    "updated for paths."
+)
+divider()
+
+# -- Section 21: Plan mode vs 'nothing happened' ---------------------------------
+h2("Why the aggregated work was not in the repo yet (plan mode)")
+body(
+    "Q: What's the problem? Nothing broken -- plan mode had blocked edits until explicit "
+    "'go ahead and implement'. Separate issue: script had targeted flat figures/ while snapshots "
+    "had been moved into dor side-by-side/individual days/; the plan aligned outputs to that layout."
+)
+divider()
+
+# -- Section 22: Full plot_validation_period.py run ------------------------------
+h2("Regenerate all validation figures: timing and NumPy warnings")
+body(
+    "Q: Generate those plots. Full run completed successfully (~28.5 min): six time series, "
+    "thirty snapshot maps, twelve aggregated maps. Snapshot dates included 2014-09-09 as "
+    "high domain-mean pr day."
+)
+quote(
+    "RuntimeWarning: Mean of empty slice on np.nanmean(st.dor, ...) during aggregated steps -- "
+    "can indicate slices with no finite DOR values; PNGs still wrote. If DOR panels in agg figures "
+    "look flat or empty, trace load_dor/masking; otherwise warnings can be treated as noise or "
+    "suppressed with explicit finite checks."
 )
 divider()
 

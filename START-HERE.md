@@ -14,10 +14,12 @@ Read these three files, in this order:
 
 Browse the remaining contents of `drops-of-resilience/` to fill in gaps — scripts, reports, logs, and data artifacts that the core documents reference. Pay attention to:
 
-- `bilinear-vs-nn-regridding/` — completed comparison study (pipeline scripts, metric outputs, reports)
-- `validate_tas_convergence/` — completed convergence check
+- `3-bilinear-vs-nn-regridding/` — completed comparison study (pipeline scripts, metric outputs, reports)
+- `2-validate-tas-convergence/` — completed convergence check
 - `chatSummaries/` — weekly summaries of prior agent conversations
-- `week1/` — early-stage orientation materials
+- `1-week1/` — early-stage orientation materials
+- `4-test8-v2-pr-intensity/`, `5-bias-correction-validation/`, `6-product-comparison/` — downstream experiments and reports
+- `7-fix-pr-splotchiness/`, `8-WDF-overprediction-fix/`, `9-additional-pr-RMSE-fixes/`, `10-improve-wind/` — active fix / follow-on plans (`7` PR splotchiness investigation is largely closed per `dor-info.md`)
 - `environment.yml` — conda environment spec
 
 ## Step 3: Explore the server

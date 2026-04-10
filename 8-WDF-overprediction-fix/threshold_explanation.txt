@@ -1,0 +1,33 @@
+What the threshold does
+
+  During downscaling, DOR computes a precipitation value for each pixel-day as:
+
+  y_final = y_base × noise_mult
+
+  where y_base is the deterministic estimate (GCM × spatial_ratio) and noise_mult is stochastic spatial noise (~centered around 1.0).
+
+  Not every day should be wet. During training, the pipeline looks at GridMET and measures what fraction of days are actually wet (≥ 0.1 mm) at each pixel in each semi-monthly period. If 40% of days are wet,
+  it sets a threshold at the 60th percentile of the simulated y_base distribution — so that the bottom 60% of days get censored to zero. This calibration is done on the deterministic y_base values, without
+  noise.
+
+  At inference, the threshold is applied after noise is multiplied in. The PR_WDF_THRESHOLD_FACTOR scales the threshold up:
+
+  if y_final <= threshold × PR_WDF_THRESHOLD_FACTOR:
+      y_final = 0
+
+  Why 1.15 was wrong
+
+  The threshold is calibrated on the noise-free distribution, but applied to the noisy output. This creates an asymmetry:
+
+  - A dry day with y_base just below the threshold can get noise-multiplied above it (e.g., 0.3 mm × 1.8 = 0.54 mm > threshold). That day becomes a false wet day.
+  - A genuinely wet day with y_base well above the threshold almost never gets noise-multiplied below it (e.g., 5.0 mm would need noise_mult < 0.1, which is the hard clip floor).
+
+  So noise pushes dry days wet much more easily than it pushes wet days dry. The net effect: too many wet days.
+
+  Bhuwan recognized this and added the 1.15 factor — raise the threshold by 15% to compensate. But 15% wasn't enough. The baseline still overpredicted WDF by +3.4 percentage points (35.7% simulated vs 32.3%
+  observed).
+
+  How we got 1.50
+
+  We swept PR_WDF_THRESHOLD_FACTOR over {1.15, 1.20, 1.25, 1.30, 1.35, 1.40, 1.45, 1.50} on the correct 216×192 Regridded_Iowa data, running the full pipeline for each value and comparing all metrics. The
+  relationship is monotonic — higher factor = more aggressive censoring = fewer wet days. Factor 1.50 is the first value that brings simulated WDF within 1 percentage point of observed (33.2% vs 32.3%).

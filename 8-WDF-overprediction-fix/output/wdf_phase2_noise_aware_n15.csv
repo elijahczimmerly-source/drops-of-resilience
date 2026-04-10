@@ -1,0 +1,2 @@
+run,PR_WDF_THRESHOLD_FACTOR,DOR_PR_WDF_NOISE_AWARE_CALIBRATION,DOR_WDF_NOISE_AWARE_N_SAMPLES,pr_Val_WDF_Obs%,pr_Val_WDF_Sim%,pr_Val_Ext99_Bias%,pr_Val_RMSE_pooled,pr_Val_Lag1_Err,wind_Val_Ext99_Bias%,out_dir,notes
+wdf_noise_aware_n15,1.15,1,15,32.684379,38.044456,3.608206,10.725629,0.028816,-8.808012,c:\drops-of-resilience\4-test8-v2-pr-intensity\output\test8_v2_pr_intensity\experiment_wdf_noise_aware_n15,WDF worse than Phase1 baseline; MC uses iid daily noise not AR(1) chain

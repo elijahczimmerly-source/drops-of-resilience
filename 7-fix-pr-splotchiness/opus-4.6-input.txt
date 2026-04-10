@@ -1,0 +1,86 @@
+Verdict: Cursor built a correct solution to the wrong problem.
+
+  The implementation quality is actually good — careful RNG state management, the AR(1) chain bug was found and fixed, determinism was verified, the code faithfully implements the plan. The problem is the plan
+   itself. Cursor wrote an elaborate 4-mechanism causal theory for how noise creates splotchiness, then spent three iterations refining a fix for that theory, without ever running the one diagnostic that would
+   have tested whether the theory explains the actual problem.
+
+  The missing experiment
+
+  The script already has DETERMINISTIC = False mode (noise=0, line 149). Running it and measuring the splotch metric on the deterministic output would instantly tell you: how much splotchiness exists with zero
+   noise? This was never done. Every attempt targeted the noise pathway, but there's no evidence that noise is the dominant source.
+
+  Why the noise theory is probably wrong (or at best a minor contributor)
+
+  Three pieces of evidence:
+
+  1. The numbers don't move. Across all attempts, the splotch metric is essentially unchanged:
+
+
+
+
+  ┌──────────────────────────────────────────┬────────────────┐
+  │                   Run                    │ splotch_metric │
+  ├──────────────────────────────────────────┼────────────────┤
+  │ Bhuwan's v8_2 (different weights/params) │ 0.0771         │
+  ├──────────────────────────────────────────┼────────────────┤
+  │ Our nodebias                             │ 0.0782         │
+  ├──────────────────────────────────────────┼────────────────┤
+  │ Attempt 1 (legacy debias)                │ 0.0786         │
+  ├──────────────────────────────────────────┼────────────────┤
+  │ Attempt 2 (calendar-chain fix)           │ 0.0783         │
+  ├──────────────────────────────────────────┼────────────────┤
+  │ Attempt 3 (N_PASSES=24)                  │ 0.0786         │
+  └──────────────────────────────────────────┴────────────────┘
+
+  If the noise bias (Mechanisms 1-4 in the plan) were the dominant source of the 0.078 splotch metric, correcting it — even imperfectly — should produce a visible drop. Instead it's flat to within measurement
+  noise. This is the signature of targeting a small component while the dominant component is untouched.
+
+  2. Bhuwan's v8_2 has the same splotchiness. Bhuwan's run used completely different spatial autocorrelation weights that he was actively tuning. If the splotchiness came from the noise pathway (clip asymmetry
+   + WDF censoring + AR(1) persistence), different noise parameters should yield meaningfully different splotch metrics. They don't — 0.0771 vs 0.0782. This means the splotchiness is upstream of the noise.
+
+  3. Look at the images. The splotch patterns in the time-mean maps are large-scale features — broad wet/dry regions spanning 50-100+ pixels. The plan's theory predicts splotches at the ~35-pixel noise
+  correlation length scale. What's visible in the maps is much larger and looks like a spatial climatology mismatch, not noise artifacts.
+
+  What's actually causing the splotchiness
+
+  The multiplicative downscaler calibrates per-pixel ratios on 1981-2005 training data:
+
+  self.spatial_ratio[p] = np.clip(m_obs / (m_gcm + 1e-4), 0.05, 20.0)
+
+  These ratios encode where the GCM is too wet or too dry relative to GridMET during the training period. When applied to 2006-2014 validation data, they don't generalize perfectly — the GCM's spatial pattern
+  of precipitation isn't stationary between training and test. The per-pixel ratio that was correct in training becomes a spatially-varying bias in validation. This creates the splotch pattern.
+
+  This is a train/test generalization error in the spatial ratios, not a noise bias. No amount of noise debiasing will fix it.
+
+  The mean_ratio column confirms this: the nodebias run already has mean_ratio = 1.050 (5% wet-biased). Debias makes it worse (1.061) because the noise_bias field is ~0.990 globally, so dividing by it scales
+  precipitation UP, amplifying the existing wet bias.
+
+  Cursor's specific mistakes
+
+  1. Never ran the deterministic baseline. This is the most important diagnostic — it isolates whether splotchiness exists without any noise at all. The infrastructure for it already exists (DETERMINISTIC =
+  True). This should have been Step 0 of the plan, before writing any debiasing code.
+  2. Accepted the plan's causal theory without testing it. The 4-mechanism explanation is mathematically correct — clip asymmetry, WDF censoring, and AR(1) persistence DO create a nonzero-mean multiplier. But
+  "this mechanism exists" is not the same as "this mechanism explains the observed splotchiness." The plan never quantifies the expected magnitude of each mechanism vs. the observed 0.078 splotch metric.
+  3. Didn't examine the spatial scale of the splotch pattern. A simple spatial frequency analysis (or just looking at the maps carefully) would have shown that the dominant patterns are much larger than 35
+  pixels, pointing away from the noise kernel as the cause.
+  4. Kept iterating on the same approach after it clearly wasn't working. Attempt 1 showed no improvement. The correct response was to question the premise, not fix an AR(1) chain bug and increase N_PASSES.
+
+  These aren't careless implementation errors — the code quality is fine. They're diagnostic reasoning errors: not testing hypotheses before building solutions, and not updating the hypothesis when the
+  solution doesn't work.
+
+  What will actually work
+
+  Step 1 — Quantify the floor. Run deterministic mode, measure its splotch metric. This tells you how much splotchiness is from the ratio calibration vs. noise. My prediction: the deterministic splotch will be
+   close to 0.078 — the noise contribution is small.
+
+  Step 2 — If the floor is high (>0.06): The problem is spatial ratio overfitting. Options:
+  - Spatial smoothing of the ratios: Apply a Gaussian filter to spatial_ratio[p] after calibration. This trades per-pixel precision for spatial coherence — the ratios become smoother and generalize better to
+  the validation period. The smoothing scale should be tuned (probably 10-30 pixels).
+  - Leave-one-year-out cross-validation of the ratios: Instead of training on all of 1981-2005, estimate how much per-pixel ratio noise you have from year-to-year variability. Use this to set a regularization
+  strength.
+  - Accept it. A splotch metric of 0.078 may simply be the expected level of spatial pattern mismatch for a ratio-based downscaler applied out-of-sample. GridMET itself has spatial noise at 4km resolution that
+   contributes to the ratio field. If LOCA2 and NEX have similar splotchiness (never measured), this may just be the state of the art.
+
+  Step 3 — If the floor is low (<0.03): Then noise IS the problem, and the right fix is log-space noise (Alternative A in the plan): noise_mult = exp(cn * cv * nf - 0.5*(cv*nf)^2). This eliminates the clip
+✻ Worked for 4m 24ssource rather than trying to correct it empirically after the fact. It's a clean, one-line change to the noise model with a built-in mean-1 guarantee. The plan deferred this as "second
+  choice" because it changes tail behavior, but it's actually a much cleaner fix than the empirical debias.

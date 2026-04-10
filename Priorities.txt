@@ -1,20 +1,19 @@
-Priority right now: benchmark (possibly final?) pipeline through spatial downscaling
+ACTIVE:
+
+Fix pr RMSE (9-additional-pr-RMSE-fixes/)
+
+
+
+
 
 ON HOLD:
 
-1. figure out what the best way to improve spatial downscaling for pr
-
-Possibilities
--check out test8 v2, figure out what needs to stay when I reverse the bias correction & regridding order to preserve spatial relationships (the noise looks at neighboring cells for example), then test reverse order
+- BC-first vs downscale-first ordering (deferred per Bhuwan — do after spatial downscaling is solid)
+- Investigate pipeline pieces assuming spatial uniformity
+- Explore post-correction consistency problems
 
 Notes from Bhuwan:
--when cropping and comparing a coarse resolution dataset and a high resolution one, add a buffer (make the bounds on the high resolution one a little bigger to capture the area in the jagged edges of the coarse one)
--we need to adjust the spatial autocorrelation based on something (I didn't understand, I don't remember what he said)
-
-
-2. investigate pieces of the pipeline assuming spatial uniformity
-
-3. explore post-correction consistency problems
-
-
- 
+- When cropping and comparing a coarse resolution dataset and a high resolution one, add a buffer
+  (make the bounds on the high resolution one a little bigger to capture the area in the jagged edges
+  of the coarse one)
+- We need to adjust the spatial autocorrelation based on something (Elijah didn't catch the details)

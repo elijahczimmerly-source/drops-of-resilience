@@ -1,0 +1,6 @@
+NEX file: \\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\Downscaled_Products\NEX-GDDP-CMIP6_Files\MPI-ESM1-2-HR\historical\rsds\rsds_day_MPI-ESM1-2-HR_historical_2006_gn.nc
+rsds attrs: {'standard_name': 'surface_downwelling_shortwave_flux_in_air', 'long_name': 'Surface Downwelling Shortwave Radiation', 'units': 'W m-2', 'comment': 'Surface solar irradiance for UV calculations.', 'original_name': 'rsds', 'cell_methods': 'area: time: mean', 'cell_measures': 'area: areacella'}
+global attrs (subset): {'activity': 'NEX-GDDP-CMIP6', 'contact': 'Dr. Rama Nemani: rama.nemani@nasa.gov, Dr. Bridget Thrasher: bridget@climateanalyticsgroup.org', 'Conventions': 'CF-1.7', 'creation_date': '2021-10-04T19:44:19.042479+00:00', 'frequency': 'day', 'institution': 'NASA Earth Exchange, NASA Ames Research Center, Moffett Field, CA 94035', 'variant_label': 'r1i1p1f1', 'product': 'output', 'realm': 'atmos', 'source': 'BCSD', 'scenario': 'historical', 'references': 'BCSD method: Thrasher et al., 2012, Hydrol. Earth Syst. Sci.,16, 3309-3314. Ref period obs: latest version of the Princeton Global Meteorological Forcings (http://hydrology.princeton.edu/data.php), based on Sheffield et al., 2006, J. Climate, 19 (13), 3088-3111.'}
+
+GridMET NPZ: Cropped_srad_2006.npz keys ['data', 'lat', 'lon', 'time']
+GridMET srad sample mean (2006 daily): 175.1573486328125

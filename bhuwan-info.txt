@@ -448,4 +448,145 @@ The script might not produce similar results i have because i have edited the we
 has the new results
  
 Thanks
+Could you remind me how the usage limits work for Cursor?
+ 
+You can check your usage on cursor website 
+ 
+It's cap at $20
+ 
+For the semester?
+ 
+No per month 
+ 
+Got it
+ 
+Also as a student you get 1 year Gemini pro free
+ 
+You can use antigravity 
+ 
+If you used up cursor
+ 
+That's good to know, thank you
+ 
+To improve pr extremes, I tested a version of test8_v2 but with an intensity-dependent ratio for pr, similar to the one you tried in test6. Unlike test6, I added a scalar PR_INTENSITY_BLEND that dampens the intensity correction (PR_INTENSITY_BLEND=1 would be like what you did in test6). Dampening this adjustment gets ext99 closer to 0 rather than shooting past 0 and lessens the increase in RMSE. 
+PR_INTENSITY_EXPLAINED.md
+pr_validation_metrics_ranked.csv.xlsx
+ 
+That's great. What method did you use for regriding
+ 
+And did it only affect precipitation?
+ 
+bilinear, so it would be comparable with your test8_v2 run. And I'm not sure about the other variables, let me check
+ 
+I didn't change the formulas for any of the other variables, but because some things are multivariate I will check the metrics to see if changes in pr affected them
+ 
+Sounds good.
+ 
+No, none of the metrics for the other variables changed in a significant way as a result of pr changing
+ 
+Can you benchmark it with already available datasets (nasa, loca2) and literature published. 
+ 
+I'll upload the nasa and loca2 on server 
+ 
+Zimmerly, Elijah
+No, none of the metrics for the other variables changed in a significant way as a result of pr changing
+Sounds good 
+ 
+And is this the final downscaling script or do you wanna look into some other ways
+ 
+That depends, how satisfied are you with the metrics?
+ 
+Yeah first we need to compare our results with already available products 
+ 
+If it's better than them then we are good to go
+ 
+Got it, okay. Let me know when nasa and loca2 are uploaded and I'll do that
+ 
+Sounds good 
+ 
+I have started copying the datasets. before that do you want to contribute to bias correction? i am trying to wrap it up and get the manuscript ready
+ 
+I'll look into contributing to bias correction, but given how much you've researched bias correction methods I suspect there isn't a lot I can do to improve the method itself. I do still wonder what bias correcting after would do though
+ 
+well the bias correction has already been done. it will be more like checking if everything is correct and if i messed up antyhing
+ 
+plotting
+ 
+and writing the manuscript which we will owrk on it together. i have already done about 70% of the manuscript
+ 
+Okay. What exactly would I be checking/plotting then?
+ 
+checking if i implemented all the methods correctly and plotting the reuslts
+ 
+Sure, I can do that
+ 
+sounds good. i will make the folder ready for you and we can setup a meeting to discuss
+ 
+okay
+ 
+loca2 and nasa have been uploaded please check.
+ 
+you will need to crop them to iowa
+ 
+Yup, they're here
+ 
+As far as I can tell, everything in the bias correction step is implemented correctly. 
+report.html
+ 
+I'm starting on the benchmarking
+ 
+have you tried antigravity? do you prefer cursor or anti gravity?
+ 
+So far I've been able to get by using Cursor auto, so I haven't gotten a chance to try antigravity. The only thing I really miss is access to opus 4.6, and when I need it I just use my personal Claude Code account.
+ 
+sounds good
+ 
+Okay, I have some results from the benchmarking against LOCA2 and NEX. Summary: DOR beats the other two on extreme precipitation and tasmin. DOR beats NEX on rsds, huss and wind (LOCA2 does not have those variables). DOR is weak on pr RMSE and WDF (too rainy). DOR is also a little behind on KGE and RMSE for tasmax. I would say that we have a good, publishable product but we could probably improve those areas where we're behind without losing our edge in the extremes. 
+dor-weaknesses.md
+benchmark_summary.csv
+ 
+What's dor?
+ 
+Drops of Resilience
+ 
+Oh ok
+ 
+That sounds great. Will you share the latest downscaling script you ran
+ 
+Let's fix those things so that our method is superior 
+ 
+Also make sure to plot the validation period for each var with the target side by side. Sometimes metrics look good but plots do not
+ 
+Mean extremes bias...
+ 
+Do we need to meet and chat about the plan?
+ 
+It's this script. The run I benchmarked was done with: PR_USE_INTENSITY_RATIO=1
+PR_INTENSITY_BLEND=0.65
+PR_INTENSITY_OUT_TAG=blend0p65 (matches the folder name)
+TEST8_SEED=42 (per manifest)
+TEST8_MAIN_PERIOD_ONLY=1
+test8_v2_pr_intensity.py
+ 
+I'll get right on the plots. We can meet if you want, or otherwise I can just generate the plots, look at them and send them to you, and then brainstorm how to fix the pr RMSE and WDF
+ 
+Sounds good 
+ 
+Here's the plots. There's plots across 4 individual days, plots aggregated over the whole time period and plots aggregated seasonally. The individual day ones are less helpful because the GCM isn't trying to match the historical period day for day, but it is interesting to see that some of the GCM cell boundaries actually made it through to the final product, leaving it looking a little blocky day to day. I don't think that's a big deal though. The time-aggregated plots look pretty good. Wind is still our worst variable, but I think it's okay to leave it like that since our wind is still better than NEX. Interestingly, our time-aggregated precipitation is more splotchy than GridMet, which I think is due to some issues with our spatial downscaling script. This is actually fixable, so I am going to work on that next. I think if I can fix this, it will help our pr RMSE also. I also have a plan for pr WDF.
+dor side-by-side.zip
+ 
+Here are my Claude Code plans for next steps
+FIX-PR-SPLOTCHINESS-PLAN.md
+FIX-WDF-OVERPREDICTION-PLAN.md
+ 
+yes day to day will never match, the aggregated plots look fine. let's also think of how can we fix the wind. it is underpredicting the numbers but the spatial patches looks like the target
+ 
+i will also look into wind
+ 
+you can focus on precipitaiton
+ 
+and thank you
+ 
+Will do, you're welcome
+ 
  
