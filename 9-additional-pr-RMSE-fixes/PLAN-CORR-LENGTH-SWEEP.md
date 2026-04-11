@@ -98,25 +98,17 @@ The script should:
 
 4. If `--figures-dir` is set, generate a side-by-side GridMET|DOR plot for each value using `7-fix-pr-splotchiness/scripts/plot_validation_agg_mean_pr.py` (same as the WDF sweep did).
 
-### Data paths for `--regridded-iowa-server`
+### Data paths
 
-These are the canonical 216x192 UNC paths (same as the WDF sweep):
+**Always use the server `Regridded_Iowa` data.** Do NOT use the local `3-bilinear-vs-nn-regridding/pipeline/data/bilinear/` files — those are from a different regridding pipeline with different border coverage (3,999 NaN pixels vs 6,147) and produce metrics that don't match published benchmarks. See `dor-info.md` § "CRITICAL: Only one correct input dataset" for details.
+
 ```
 DOR_TEST8_CMIP6_HIST_DAT=\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2\Regridded_Iowa\MPI\mv_otbc\cmip6_inputs_19810101-20141231.dat
 DOR_TEST8_GRIDMET_TARGETS_DAT=\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2\Regridded_Iowa\gridmet_targets_19810101-20141231.dat
 DOR_TEST8_GEO_MASK_NPY=\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2\Regridded_Iowa\geo_mask.npy
 ```
 
-If the server is not reachable, use local data instead:
-```
---cmip-hist c:/drops-of-resilience/3-bilinear-vs-nn-regridding/pipeline/data/bilinear/cmip6_inputs_19810101-20141231.dat
---gridmet-targets c:/drops-of-resilience/3-bilinear-vs-nn-regridding/pipeline/data/bilinear/gridmet_targets_19810101-20141231.dat
---geo-mask c:/drops-of-resilience/3-bilinear-vs-nn-regridding/pipeline/data/bilinear/geo_mask.npy
-```
-
-These local files are confirmed 216x192 (verified by file size: 12,359,983,104 bytes = 12418 days x 6 vars x 216 x 192 x 4 bytes).
-
-**IMPORTANT:** Before running, verify the local data files exist and match the expected size. If they don't exist, use the server paths instead.
+If the server is not reachable, **do not substitute a different local dataset.** Wait until VPN/server access is restored.
 
 ## How to run
 
@@ -126,9 +118,7 @@ conda activate drops-of-resilience
 python c:/drops-of-resilience/9-additional-pr-RMSE-fixes/scripts/sweep_corr_length.py \
   --out-csv c:/drops-of-resilience/9-additional-pr-RMSE-fixes/output/corr_length_sweep.csv \
   --figures-dir c:/drops-of-resilience/9-additional-pr-RMSE-fixes/figures \
-  --cmip-hist c:/drops-of-resilience/3-bilinear-vs-nn-regridding/pipeline/data/bilinear/cmip6_inputs_19810101-20141231.dat \
-  --gridmet-targets c:/drops-of-resilience/3-bilinear-vs-nn-regridding/pipeline/data/bilinear/gridmet_targets_19810101-20141231.dat \
-  --geo-mask c:/drops-of-resilience/3-bilinear-vs-nn-regridding/pipeline/data/bilinear/geo_mask.npy
+  --regridded-iowa-server
 ```
 
 Expected runtime: ~20 min per value x 6 values = ~2 hours total.

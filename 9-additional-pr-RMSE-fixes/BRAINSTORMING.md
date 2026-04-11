@@ -141,20 +141,57 @@ Something like: `nf_effective = nf * sigmoid((y_base - threshold) / scale)` — 
 
 ---
 
-## Current plan
+## Why noise-tuning ideas (1–8) cannot close the RMSE gap
 
-**Idea 6 (correlation length sweep)** is being tried first. Full plan in [`PLAN-CORR-LENGTH-SWEEP.md`](PLAN-CORR-LENGTH-SWEEP.md).
+### The math
 
-## If the correlation length sweep doesn't help enough
+RMSE² = Bias² + (σ_sim − σ_obs)² + 2·σ_sim·σ_obs·(1 − r)
 
-The ideas below are ranked by expected impact / effort, but **none of them have detailed plans yet.** They require code logic changes (not just parameter sweeps) and would interact with the WDF threshold we just calibrated. Before pivoting to any of them, ask Elijah to get Claude Code to write a detailed, unambiguous plan — do not attempt to implement these from the brief descriptions above.
+Where:
+- **Bias** ≈ 0 for DOR (already calibrated)
+- **σ_sim, σ_obs** are the standard deviations of simulated and observed precipitation, pooled across all pixel-days
+- **r** is the Pearson correlation between simulated and observed precipitation across all pixel-days
 
-1. **Idea 4 (intensity-dependent noise scaling)** — directly targets the mechanism: excess noise on marginal wet days creates false positives that inflate RMSE. Preserves full noise on extreme events. Moderate implementation effort. Would require re-tuning `PR_WDF_THRESHOLD_FACTOR` afterward.
+When Bias ≈ 0 and σ_sim ≈ σ_obs ≈ σ (variance-matched, which DOR is — that's why Ext99 is good):
 
-2. **Idea 2 (domain-mean intensity scaling)** — simple to implement, exploits real signal (domain-mean pr has some skill). Low risk.
+**RMSE² ≈ 2σ²(1 − r)**
 
-3. **Idea 3 (spatially varying noise factor)** — highest ceiling but overfitting risk. Should be tried with spatial regularization.
+With σ ≈ 7.1 mm/day (estimated from DOR's RMSE and r):
 
-4. **Idea 1 (condition noise on GCM spatial anomaly)** — most novel but hardest to implement. Depends on whether the GCM has usable spatial signal at the inter-cell scale. A quick diagnostic (correlate GCM spatial anomaly with obs spatial anomaly) would tell us immediately whether this is worth pursuing.
+| r | RMSE |
+|---|------|
+| 0.025 (DOR now) | 9.91 |
+| 0.10 | 9.52 |
+| 0.20 | 8.98 |
+| **0.26** | **8.64 (= NEX)** |
+| 0.30 | 8.40 |
 
-5. **Ideas 5, 7, 8** — lower priority. See descriptions above.
+### What r means in plain language
+
+On any given day, real precipitation has a specific spatial pattern — maybe it's raining in the northwest corner of Iowa and dry in the southeast, because a front is passing through. GridMET records this actual pattern.
+
+DOR doesn't try to reproduce that. Here's what it gets right and what it gets wrong:
+
+- **What DOR gets right (spatial_ratio):** Over the long run, some pixels are climatologically wetter than others — because of terrain, latitude, proximity to moisture sources. The `spatial_ratio` captures this from 25 years of training data. This is correct *on average*.
+
+- **What DOR also gets right (noise):** Real precipitation is highly variable day-to-day. The stochastic noise generates realistic variability — the simulated *distribution* of rain amounts matches the observed distribution. This is why Ext99 is nearly perfect.
+
+- **What DOR gets wrong (daily spatial pattern):** On January 15, 2008, DOR might put the heavy rain in the southeast while GridMET shows it was actually in the northwest. The noise field is spatially random — it has no information about where it actually rained that day. Over thousands of days, these random patterns average out to the correct climatology, but on any individual day, the pattern is essentially a guess.
+
+That's what r ≈ 0.025 means. The daily spatial pattern is random. Every day that the noise puts rain in the wrong place, that's squared error in RMSE.
+
+### Why noise tuning can't help
+
+The stochastic noise adds ~0.7 to RMSE (9.91 stochastic − 9.21 deterministic). All of Ideas 1–8 try to make the noise better — change its amplitude, scale, spatial structure, or temporal persistence. But even if we perfectly optimized the noise to add **zero** RMSE (which is physically impossible — the noise is there to generate variability, and variability costs RMSE when r ≈ 0), we'd get RMSE = 9.21. **NEX is at 8.64.** We'd still lose.
+
+The correlation length sweep (Idea 6) confirmed this: the best corr_len (15 px) improved RMSE by 0.013 (9.916 → 9.903). The entire noise-optimization budget can yield fractions of a point. The gap to NEX is 1.27 points.
+
+### How NEX gets its low RMSE
+
+NEX doesn't have better correlation (KGE = 0.002, essentially zero — even worse than DOR). NEX gets low RMSE by **compressing the precipitation distribution**: Ext99 = −25.3% means it underpredicts extreme rain by 25%. With σ_sim much smaller than σ_obs, the 2·σ_sim·σ_obs·(1 − r) term shrinks even though r ≈ 0. Less variance = less RMSE, but also wrong extremes.
+
+**DOR cannot and should not imitate this.** Our Ext99 = −0.05% is the product's standout metric — the reason it matters for WEPP/SWAT+.
+
+### The only path to beating NEX on RMSE without sacrificing Ext99
+
+Improve **r** from ~0.025 to ~0.26. This is the only term in the decomposition that can close a 1.27 gap while keeping σ_sim ≈ σ_obs. See [`PLAN-CROSS-VARIABLE-NOISE.md`](PLAN-CROSS-VARIABLE-NOISE.md).

@@ -35,6 +35,10 @@ Env:
   DOR_PR_WDF_NOISE_AWARE_CALIBRATION — 0|1 (default 0): calibrate WDF threshold on noisy training
     outputs (MC); when 1, inference uses threshold without extra factor (see plan Phase 2)
   DOR_WDF_NOISE_AWARE_N_SAMPLES — int (default 30): MC replicates per period for noise-aware WDF
+  DOR_PR_CORR_LENGTH — optional float (px): override correlation length for **pr** only in `process_variable`
+    (default 15 after Apr 2026 sweep; omit for production default). Other variables unchanged.
+  TEST8_SKIP_NPZ_SAVE — 0|1 (default 0): if 1, skip writing main-period `Stochastic_V8_Hybrid_*.npz` /
+    `Deterministic_V8_Hybrid_*.npz` after metrics (saves disk; Table1/2 still written).
 
 Original docstring (test8_v2):
   Stochastic Spatial Disaggregation (Post-OTBC); spatial anomaly / ratio + AR(1) FFT noise; v2 Schaake.
@@ -957,8 +961,15 @@ def process_variable(var_name):
         corr_len = 100.0 # Synoptic scale air-masses / cloud systems
     elif var_name in ["wind"]:
         corr_len = 50.0  # Large-scale wind fields
-    elif var_name in ["tasmin", "huss", "pr"]:
-        corr_len = 35.0  # Mesoscale moisture/storm/temp structures
+    elif var_name == "pr":
+        _cl = os.environ.get("DOR_PR_CORR_LENGTH", "").strip()
+        if _cl:
+            corr_len = float(_cl)
+        else:
+            # Default tuned via 9-additional-pr-RMSE-fixes/PLAN-CORR-LENGTH-SWEEP.md (Apr 2026).
+            corr_len = 15.0
+    elif var_name in ["tasmin", "huss"]:
+        corr_len = 35.0  # Mesoscale moisture/temp structures
     else:
         corr_len = 35.0
         
@@ -1091,6 +1102,9 @@ if __name__ == "__main__":
         f"PR WDF factor: {PR_WDF_THRESHOLD_FACTOR} (effective {_effective_pr_wdf_factor()}; "
         f"noise-aware cal={DOR_PR_WDF_NOISE_AWARE_CALIBRATION})"
     )
+    _dprcl = os.environ.get("DOR_PR_CORR_LENGTH", "").strip()
+    if _dprcl:
+        log(f"  DOR_PR_CORR_LENGTH={_dprcl} (pr noise correlation length override)")
     log(f"  DOR_MULTIPLICATIVE_NOISE_DEBIAS={DOR_MULTIPLICATIVE_NOISE_DEBIAS}")
     log(f"  DOR_RATIO_SMOOTH_SIGMA={DOR_RATIO_SMOOTH_SIGMA}")
     log(f"  Stochastic: {STOCHASTIC}  |  Deterministic: {DETERMINISTIC}")
@@ -1208,13 +1222,20 @@ if __name__ == "__main__":
         gc.collect()
 
     # Save main period
-    if STOCHASTIC and full_sim is not None:
+    _skip_npz = os.environ.get("TEST8_SKIP_NPZ_SAVE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if _skip_npz:
+        log("TEST8_SKIP_NPZ_SAVE set — skipping main-period Stochastic/Deterministic NPZ writes")
+    if STOCHASTIC and full_sim is not None and not _skip_npz:
         log("Saving main-period outputs (Stochastic)...")
         for i, var in enumerate(VARS_INTERNAL):
             np.savez_compressed(os.path.join(OUT_DIR, f"Stochastic_V8_Hybrid_{var}.npz"),
                                 data=full_sim[:, i], dates=DATES_ALL.values)
             log(f"  Saved {var}")
-    if DETERMINISTIC and full_sim_det is not None:
+    if DETERMINISTIC and full_sim_det is not None and not _skip_npz:
         log("Saving main-period outputs (Deterministic)...")
         for i, var in enumerate(VARS_INTERNAL):
             np.savez_compressed(os.path.join(OUT_DIR, f"Deterministic_V8_Hybrid_{var}.npz"),

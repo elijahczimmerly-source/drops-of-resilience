@@ -6,6 +6,9 @@ Deprecated entry point — spatial downscaling now lives in `pipeline/scripts/`.
 
 This file delegates to **test8 v4** and keeps outputs under `4-test8-v2-pr-intensity/`
 when `DOR_PIPELINE_ROOT` is unset (same as running from the old task folder).
+
+PR noise correlation length is controlled by `DOR_PR_CORR_LENGTH` in `pipeline/scripts/_test8_sd_impl.py`
+(see `9-additional-pr-RMSE-fixes/PLAN-CORR-LENGTH-SWEEP.md`).
 """
 from __future__ import annotations
 

@@ -406,23 +406,30 @@ Also on server under `Spatial_Downscaling/`:
 | → LOCA2 | `LOCA2\{EC-Earth3, GFDL-CM4, MPI-ESM1-2-HR, MRI-ESM2-0}\{historical, ssp585}\{pr, tasmax, tasmin}\` — single .nc per var (1950–2014 historical) |
 | → NEX-GDDP-CMIP6 | `NEX-GDDP-CMIP6_Files\{MODEL}\{historical, ssp585}\{huss, pr, rsds, sfcWind, tasmax, tasmin}\` — yearly .nc files (e.g. **MPI-ESM1-2-HR** and **CMCC-ESM2** present) |
 
-### CRITICAL: Two Iowa input datasets on the server — DO NOT CONFUSE
+### CRITICAL: Only one correct input dataset — `Regridded_Iowa` on the server
 
-There are **two different** regridded Iowa datasets on the server. They have different grid sizes and **must not be mixed up**.
+Bhuwan's `test8_v2.py` hardcodes `GRIDMET_DATA_DIR = r"E:\SpatialDownscaling\Regridded_Iowa"`. The server mirror is `Spatial_Downscaling\test8_v2\Regridded_Iowa\`. **This is the only correct data for all test8_v2/v3/v4 work and all benchmark-comparable runs.** It has 6,147 NaN border pixels in the CMIP6 inputs, leaving 35,325 valid land pixels per day.
 
-| Dataset | Grid | Server path | Use |
-|---------|------|-------------|-----|
-| **`Data_Regrided_Gridmet`** (OLD) | **84×96** (later repackaged as 120×192 flat) | `Spatial_Downscaling\Data_Regrided_Gridmet\` | **test6 only.** DO NOT use for test8_v2 or any benchmark-comparable runs. |
-| **`Regridded_Iowa`** (CURRENT) | **216×192** (41,472 cells) | `Spatial_Downscaling\test8_v2\Regridded_Iowa\` | **test8_v2 and all current work.** All published benchmarks (product comparison, dor-weaknesses) use this grid. |
+There are **two other 216×192 datasets in this repo that look similar but are NOT the same data** and produce different metrics:
 
-**When writing sweep or experiment scripts that run [`pipeline/scripts/test8_v4.py`](pipeline/scripts/test8_v4.py) (or v3) via env vars, set `DOR_PIPELINE_ROOT` to a folder that contains your local `data/` if needed, and always use these memmap paths for the 216×192 benchmark grid:**
+| Dataset | Location | NaN border pixels | WDF Obs% | Use |
+|---------|----------|-------------------|----------|-----|
+| **`Regridded_Iowa`** (CORRECT) | Server: `Spatial_Downscaling\test8_v2\Regridded_Iowa\` | **6,147** | **32.317** | **All production runs and benchmarks** |
+| `bilinear` regridding output | Local: `3-bilinear-vs-nn-regridding/pipeline/data/bilinear/` | 3,999 | 32.547 | **Regridding comparison only.** Different regridding pipeline with different border handling. Do NOT use for downscaling experiments. |
+| **`Data_Regrided_Gridmet`** (OLD) | Server: `Spatial_Downscaling\Data_Regrided_Gridmet\` | different grid entirely | different | **test6 only.** 84×96 grid, not 216×192. |
+
+**When writing sweep or experiment scripts, always use the server `Regridded_Iowa` paths:**
 ```
 DOR_TEST8_CMIP6_HIST_DAT=\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2\Regridded_Iowa\MPI\mv_otbc\cmip6_inputs_19810101-20141231.dat
 DOR_TEST8_GRIDMET_TARGETS_DAT=\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2\Regridded_Iowa\gridmet_targets_19810101-20141231.dat
 DOR_TEST8_GEO_MASK_NPY=\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2\Regridded_Iowa\geo_mask.npy
 ```
 
-**Why this matters:** In April 2026, a WDF threshold sweep (`8-WDF-overprediction-fix`) was accidentally run on `Data_Regrided_Gridmet` instead of `Regridded_Iowa`, producing a 120×192 grid instead of the 216×192 benchmark grid. All absolute metrics (RMSE, Ext99, WDF) were numerically incomparable to published benchmarks. The relative findings (factor 1.30 nails WDF) were valid, but the run had to be redone on the correct data.
+**Do NOT use `3-bilinear-vs-nn-regridding/pipeline/data/bilinear/` as a "local fallback"** — it is a different dataset produced by a different regridding pipeline with different border coverage (3,999 vs 6,147 NaN pixels). Metrics computed on it (WDF, RMSE, Ext99) will not match published benchmarks.
+
+**Incident history:**
+- WDF threshold sweep (Apr 2026): accidentally ran on `Data_Regrided_Gridmet` (wrong grid entirely, 120×192). Had to redo.
+- Corr_len sweep (Apr 2026): accidentally ran on local `bilinear` data (right grid size, wrong data). Relative findings valid but absolute numbers don't match benchmarks.
 
 Also on server (older layout, still present):
 
@@ -668,7 +675,7 @@ To save space after the benchmark, **large `Stochastic_V8_Hybrid_*.npz`** (and a
 
 - **PR splotchiness in time-aggregated maps**: Dark splotches (high precipitation) visible in time-mean DOR maps that don't appear in GridMET. Investigated extensively in [`7-fix-pr-splotchiness/`](7-fix-pr-splotchiness/). After 5 attempts at fixes (noise debiasing, ratio smoothing) and diagnostic decomposition across pipeline stages and GCMs, determined that **the splotches originate from the GCM's coarse spatial precipitation pattern**, not from the downscaler. The downscaler faithfully reproduces what the GCM gives it; the GCM has ~3-4 cells across Iowa whose relative wetness doesn't match GridMET. This is not fixable in the spatial downscaler. Set `DOR_MULTIPLICATIVE_NOISE_DEBIAS=0` (noise debias off).
 - **PR and wind KGE near zero**: KGE ≈ 0.02 for pr, ≈ 0.08 for wind. Fundamental GCM limitation — can't track individual storm events at 100km. Stayed ~0.02 across test8, test8_v2, v9, and all three benchmark products (LOCA2 0.023, NEX 0.002). Won't improve until temporal downscaling is addressed (correcting *which days* it rains, not just *how much*). Not the current focus — Bhuwan said to work on spatial downscaling first.
-- **PR RMSE gap vs LOCA2/NEX**: The PR-intensity blend is not the main cause — even at blend=0 (parity), RMSE is 9.51 vs LOCA2's 9.47, roughly tied. The blend adds ~0.4 to RMSE but the baseline gap to NEX (8.64) is much larger and exists independent of the blend. The gap likely comes from somewhere else in the pipeline.
+- **PR RMSE gap vs NEX — fully understood (Apr 2026)**: DOR's RMSE (9.91) vs NEX (8.64) is a 1.27 gap. The RMSE decomposition shows that with near-zero correlation (r ≈ 0.025) and variance-matched output (σ_sim ≈ σ_obs), RMSE² ≈ 2σ²(1−r). NEX achieves lower RMSE by *compressing variance* (Ext99 = −25.3%), not by having better correlation — NEX's KGE is 0.002, even worse than DOR. Tuning noise parameters (correlation length, amplitude, scaling) cannot close this gap: the entire noise RMSE budget is ~0.7 (stochastic 9.91 − deterministic 9.21), and a corr_len sweep confirmed only 0.013 improvement from the best value. The PR-intensity blend adds ~0.4 to RMSE but parity still doesn't beat NEX (9.51 vs 8.64). **The only mathematical path to beating NEX without sacrificing Ext99 is improving r from ~0.025 to ~0.26** — making the daily spatial pattern partially informed rather than random. A cross-variable noise conditioning approach (using the GCM's temperature/humidity fields, which have KGE ~0.8, to bias the precipitation noise field) is the current hypothesis. See `9-additional-pr-RMSE-fixes/BRAINSTORMING.md` and `PLAN-CROSS-VARIABLE-NOISE.md`.
 - **Tasmax KGE/RMSE trailing LOCA2/NEX by 1-2%**: Likely inherited from MPI's weak north-south temperature gradient passed through OTBC. Spatial maps confirm the warm bias is concentrated in the north — a GCM/BC issue, not a downscaler issue. DOR already wins on tasmax Ext99 and Lag1. Would need BC investigation, which Bhuwan deferred.
 
 ### Completed / deferred
