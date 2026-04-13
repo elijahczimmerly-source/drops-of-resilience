@@ -1,8 +1,9 @@
 """
 _test8_sd_impl.py — Shared implementation for Drops of Resilience spatial downscaling.
 
-Run via **`test8_v3.py`** (PR intensity path; default `PR_WDF_THRESHOLD_FACTOR=1.15`) or
-**`test8_v4.py`** (v3 + tuned wet-day threshold, default `PR_WDF_THRESHOLD_FACTOR=1.65`).
+Run via **`test8_v2.py`** (Bhuwan-parity-oriented defaults; optional PR intensity via env) or
+**`test8_v3.py`** (PR intensity path; default `PR_WDF_THRESHOLD_FACTOR=1.15`) or
+**`test8_v4.py`** (tuned wet-day threshold, default `PR_WDF_THRESHOLD_FACTOR=1.65`).
 Set `DOR_PIPELINE_ID` before import, or launch those entry points.
 
 Upstream: fork of Bhuwan's server `test8_v2.py` (see TEST8_V2_SERVER_SOURCE).
@@ -13,7 +14,7 @@ Env:
   TEST8_SEED=<int>           — optional; if set, fixes RNG for reproducibility vs published v2 may differ
   DOR_PIPELINE_ROOT — optional absolute path to experiment root (folder with scripts/, data/, output/)
   DOR_TEST8_V2_PR_INTENSITY_ROOT — legacy alias for DOR_PIPELINE_ROOT
-  DOR_PIPELINE_ID — internal: `test8_v3` | `test8_v4` (normally set by test8_v3.py / test8_v4.py)
+  DOR_PIPELINE_ID — internal: `test8_v2` | `test8_v3` | `test8_v4` (normally set by test8_v*.py entry points)
   DOR_TEST8_PR_DATA_DIR     — optional override for memmap directory (default: <root>/data)
   PR_INTENSITY_BLEND       — float in [0, 2], default 1.0; scales (ratio_ext - ratio) * weight when PR_USE_INTENSITY_RATIO=1
   PR_INTENSITY_OUT_TAG     — optional suffix for experiment output subdir (alphanumeric, _, -) to avoid overwriting during sweeps
@@ -30,7 +31,7 @@ Env:
   TEST8_STOCHASTIC — 0|1 (default 1): run stochastic branch; leave 1 unless you know the main path still builds
   DOR_RATIO_SMOOTH_SIGMA — float >=0 (default 0): Gaussian smooth applied to calibrated multiplicative
     spatial_ratio (and pr spatial_ratio_ext when intensity is on) in pixels; 0 = legacy behavior
-  PR_WDF_THRESHOLD_FACTOR — float (default 1.15 for test8_v3, 1.65 for test8_v4): scales calibrated wet-day threshold during inference;
+  PR_WDF_THRESHOLD_FACTOR — float (default 1.15 for test8_v3; 1.65 for test8_v2 and test8_v4): scales calibrated wet-day threshold during inference;
     sweep for WDF tuning (see 8-WDF-overprediction-fix/)
   DOR_PR_WDF_NOISE_AWARE_CALIBRATION — 0|1 (default 0): calibrate WDF threshold on noisy training
     outputs (MC); when 1, inference uses threshold without extra factor (see plan Phase 2)
@@ -73,9 +74,9 @@ TEST8_V2_SERVER_LASTWRITE_ISO = "2026-03-30T11:43:15-05:00"
 
 
 def _pipeline_id() -> str:
-    """`test8_v3` or `test8_v4` — set by entry-point scripts or DOR_PIPELINE_ID."""
+    """`test8_v2` | `test8_v3` | `test8_v4` — set by entry-point scripts or DOR_PIPELINE_ID."""
     pid = os.environ.get("DOR_PIPELINE_ID", "test8_v4").strip() or "test8_v4"
-    if pid not in ("test8_v3", "test8_v4"):
+    if pid not in ("test8_v2", "test8_v3", "test8_v4"):
         return "test8_v4"
     return pid
 
@@ -141,7 +142,7 @@ DOR_RATIO_SMOOTH_SIGMA = _parse_ratio_smooth_sigma()
 
 
 def _default_pr_wdf_str() -> str:
-    """test8_v3: legacy Bhuwan-scale factor; test8_v4: tuned on Regridded_Iowa 216×192 (see 8-WDF-overprediction-fix/)."""
+    """test8_v3: legacy WDF scale; test8_v2 and test8_v4: 1.65 (Bhuwan Iowa tuning; see 8-WDF-overprediction-fix/)."""
     return "1.15" if _PIPELINE_ID == "test8_v3" else "1.65"
 
 
@@ -1084,7 +1085,11 @@ if __name__ == "__main__":
 
     _device_str = "cuda" if torch.cuda.is_available() else "cpu"
     log("=" * 65)
-    log(f"{_PIPELINE_ID} — stochastic spatial downscaling (OTBC + PR intensity + WDF threshold)")
+    log(
+        f"{_PIPELINE_ID} — stochastic spatial downscaling (OTBC"
+        + (" + optional PR intensity" if PR_USE_INTENSITY_RATIO else "")
+        + " + WDF threshold)"
+    )
     log(f"  EXPERIMENT_ROOT: {_EXPERIMENT_ROOT}")
     log(f"  BASE_DIR: {BASE_DIR}")
     log(f"  OUT_DIR: {OUT_DIR}")

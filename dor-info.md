@@ -2,7 +2,17 @@
 
 ## Local repository layout
 
-Top-level work folders use numeric prefixes: `1-week1`, `2-validate-tas-convergence`, `3-bilinear-vs-nn-regridding`, `4-test8-v2-pr-intensity`, `5-bias-correction-validation`, `6-product-comparison`, `7-fix-pr-splotchiness` (includes [`PLOTTING.md`](7-fix-pr-splotchiness/PLOTTING.md) for PR mean-map conventions), `8-WDF-overprediction-fix`, `9-additional-pr-RMSE-fixes`, `10-improve-wind`. **Spatial downscaling (test8 PR-intensity line) lives in the repo-root [`pipeline/`](pipeline/)** — scripts, README, and (when run) `output/test8_v3/` and `output/test8_v4/`. The folder `3-bilinear-vs-nn-regridding/pipeline/` is only the **regridding comparison** harness (bilinear vs NN), not the main stochastic pipeline. Ignore any stray root-level `pipeline/output/` from older experiments unless documented elsewhere. Paths in this file use these names; older chat logs may omit the prefix or use outdated numbers (e.g. `9-improve-wind` → now `10-improve-wind`).
+Top-level work folders use numeric prefixes: `1-week1`, `2-validate-tas-convergence`, `3-bilinear-vs-nn-regridding`, `4-test8-v2-pr-intensity`, `5-bias-correction-validation`, `6-product-comparison`, `7-fix-pr-splotchiness` (includes [`PLOTTING.md`](7-fix-pr-splotchiness/PLOTTING.md) for PR mean-map conventions), `8-WDF-overprediction-fix`, `9-additional-pr-RMSE-fixes`, `10-improve-wind`. **Spatial downscaling (test8 line) lives in the repo-root [`pipeline/`](pipeline/)** — scripts, README, and (when run) `output/test8_v2/`, `output/test8_v3/`, and `output/test8_v4/`. **100 km→4 km regridding** harness scripts live under [`pipeline/scripts/regrid/`](pipeline/scripts/regrid/) (see README there); the folder `3-bilinear-vs-nn-regridding/pipeline/` retains **deprecated stubs** that forward to those paths for the bilinear vs NN comparison study, not the main stochastic pipeline. Ignore any stray root-level `pipeline/output/` from older experiments unless documented elsewhere. Paths in this file use these names; older chat logs may omit the prefix or use outdated numbers (e.g. `9-improve-wind` → now `10-improve-wind`).
+
+### Clarifications (avoid common confusion)
+
+| Topic | What to know |
+|-------|----------------|
+| **Server `test8_v2.py` vs local [`pipeline/scripts/test8_v2.py`](pipeline/scripts/test8_v2.py)** | Bhuwan’s file on `\\abe-cylo\...\Spatial_Downscaling\Scripts\test8_v2.py` is the lab canonical script. The repo **entry point** runs **[`_test8_sd_impl.py`](pipeline/scripts/_test8_sd_impl.py)** with Bhuwan-parity-oriented env defaults — the same fork used for v3/v4, **not** a byte copy of the server file. |
+| **`_test8_sd_impl.py` / `dor_test8_lock.py`** | **`_test8_sd_impl.py`** holds the full stochastic pipeline (calibration, AR noise, Schaake, metrics, NPZ output). `test8_v2.py` / `v3` / `v4` only set `DOR_PIPELINE_ID` and env, then execute the impl. **`dor_test8_lock.py`** is a Windows single-instance lock so two long runs don’t share the same output directory. |
+| **`6-product-comparison` and regridding** | **[`run_benchmark.py`](6-product-comparison/scripts/run_benchmark.py)** does **not** call [`regrid_to_gridmet.py`](#key-scripts) or [`pipeline/scripts/regrid/`](pipeline/scripts/regrid/). It reads **DOR** from existing `Stochastic_V8_Hybrid_*.npz` (built when you ran the downscaler on memmaps whose **GCM inputs** were produced earlier by server/local regrid). It reads **LOCA2** / **NEX** NetCDFs and **interpolates** them onto the Iowa GridMET grid in code ([`load_loca2.py`](6-product-comparison/scripts/load_loca2.py), [`load_nex.py`](6-product-comparison/scripts/load_nex.py)). **Obs** = GridMET targets memmap. |
+| **What the product benchmark does *not* measure** | It compares **2006–2014 simulated vs GridMET** (KGE, RMSE, Ext99, etc.). It does **not** assess preservation of a **climate change signal** (e.g. future minus historical vs other products); that would require a separate analysis with SSP outputs. |
+| **LOCA2 vs NEX native grids** | Before interpolation to GridMET, archives are roughly **LOCA2 ~6 km** (≈1/16°) and **NEX-GDDP-CMIP6 0.25° × 0.25°** (~25–28 km at Iowa). See [`6-product-comparison/LITERATURE.md`](6-product-comparison/LITERATURE.md). The benchmark still evaluates everyone on the **same** Iowa 216×192 GridMET grid. |
 
 ### Server path verification (AI agents)
 
@@ -121,44 +131,46 @@ Independent validation of all 8 BC methods over the Iowa crop (2006–2014). Sel
 - There is a **test7 / test7_v2.py** referenced in `regrid_all_models_iowa.py` — not yet found or read. On Bhuwan's machine.
 - **`gridmet_paths.py`** — shared config module imported by `regrid_to_gridmet.py` and `test8.py`. Provides `GRIDMET_DATA_DIR`. On Bhuwan's machine, not on server. Not needed for local pipeline scripts (paths are hardcoded in those). Note: `test8_v2.py` does not import `gridmet_paths.py` — it hardcodes `GRIDMET_DATA_DIR` directly.
 
-### Local pipeline scripts (`C:\drops-of-resilience\3-bilinear-vs-nn-regridding\pipeline\scripts\`)
-| Script | Purpose |
+### Local regridding + bilinear-vs-NN harness (`3-bilinear-vs-nn-regridding/`)
+
+**Canonical regrid scripts:** [`pipeline/scripts/regrid/regrid_to_gridmet_bilinear.py`](pipeline/scripts/regrid/regrid_to_gridmet_bilinear.py), [`pipeline/scripts/regrid/regrid_to_gridmet_nn.py`](pipeline/scripts/regrid/regrid_to_gridmet_nn.py) — env-configurable paths; see [`pipeline/scripts/regrid/README.md`](pipeline/scripts/regrid/README.md). Deprecated wrappers under `3-bilinear-vs-nn-regridding/pipeline/scripts/` print a notice and delegate to these files.
+
+| Script (task folder) | Purpose |
 |--------|---------|
-| `test8_bilinear.py` | test8 logic with hardcoded local paths pointing to `pipeline/data/bilinear/`. Outputs to `pipeline/output/bilinear/`. |
-| `test8_nn.py` | test8 logic with hardcoded local paths pointing to `pipeline/data/nearest_neighbor/`. Outputs to `pipeline/output/nearest_neighbor/`. |
-| `regrid_to_gridmet_bilinear.py` | Bilinear variant of regrid_to_gridmet.py. Conservative for PR, bilinear for others. Reads from `source_bc/`, outputs to `pipeline/data/bilinear/`. |
-| `regrid_to_gridmet_nn.py` | NN variant of regrid_to_gridmet.py. Reads from `source_bc/`, outputs to `pipeline/data/nearest_neighbor/`. |
+| `test8_bilinear.py` | test8 logic with paths pointing to regridded bilinear data. Outputs under task `pipeline/output/`. |
+| `test8_nn.py` | Same for nearest-neighbor regrid path. |
 | `crop_bc_mpi_local.py` | Crops physics-corrected OTBC MPI data from server to Iowa. Outputs to `source_bc/`. |
 | `crop_gridmet_local.py` | Crops GridMET CONUS .nc files from server to Iowa. Outputs to `gridmet_cropped/`. |
-| `compare_regrid_methods.py` | Reads the metric CSVs output by test8_bilinear.py and test8_nn.py and diffs them to produce `regrid_comparison_report.html`. Does not reimplement metric logic — all KGE/RMSE/Ext99/Lag1 calculation is in test8 itself (`calculate_pooled_metrics`, `calculate_per_cell_summary_metrics`). |
+| `compare_regrid_methods.py` | Reads metric CSVs from bilinear vs NN test8 runs and produces `regrid_comparison_report.html`. |
 
 ## Local: test8 PR intensity pipeline (`pipeline/`)
 
 Local fork of Bhuwan’s **test8_v2** with optional **PR-only** storm-intensity–dependent ratio scaling and an optional **blend** that scales `(ratio_ext - ratio) × weight` when intensity is on (full technique, blend sweep, and expectations vs results: [`4-test8-v2-pr-intensity/PR_INTENSITY_EXPLAINED.md`](4-test8-v2-pr-intensity/PR_INTENSITY_EXPLAINED.md)).
 
-**Naming (Apr 2026):** **`test8_v3`** = PR-intensity path with **legacy** wet-day scaling default **`PR_WDF_THRESHOLD_FACTOR=1.15`**. **`test8_v4`** = same path with **tuned** WDF default **`1.65`** (Iowa 216×192; see [`8-WDF-overprediction-fix/`](8-WDF-overprediction-fix/)). Shared implementation: [`pipeline/scripts/_test8_sd_impl.py`](pipeline/scripts/_test8_sd_impl.py). Overview: [`pipeline/README.md`](pipeline/README.md).
+**Naming (Apr 2026):** **`test8_v2`** = Bhuwan-parity-oriented preset (default WDF **1.65**, pr corr length **35**, noise debias **off**; no blend preset — see entry script). **`test8_v3`** = PR-intensity path with **legacy** wet-day scaling default **`PR_WDF_THRESHOLD_FACTOR=1.15`**. **`test8_v4`** = same path with **tuned** WDF default **`1.65`** (Iowa 216×192; see [`8-WDF-overprediction-fix/`](8-WDF-overprediction-fix/)). Shared implementation: [`pipeline/scripts/_test8_sd_impl.py`](pipeline/scripts/_test8_sd_impl.py). Overview: [`pipeline/README.md`](pipeline/README.md).
 
 | Path | Role |
 |------|------|
-| [`pipeline/scripts/test8_v4.py`](pipeline/scripts/test8_v4.py) | **Recommended** entry point; sets `DOR_PIPELINE_ID=test8_v4`, default blend **0.65**, default WDF factor **1.65**. |
+| [`pipeline/scripts/test8_v2.py`](pipeline/scripts/test8_v2.py) | Bhuwan-parity-oriented entry point; sets `DOR_PIPELINE_ID=test8_v2` (fork, not a byte copy of server `test8_v2.py`). |
+| [`pipeline/scripts/test8_v4.py`](pipeline/scripts/test8_v4.py) | **Recommended** for PR-intensity work; sets `DOR_PIPELINE_ID=test8_v4`, default blend **0.65**, default WDF factor **1.65**. |
 | [`pipeline/scripts/test8_v3.py`](pipeline/scripts/test8_v3.py) | Same as v4 with **WDF default 1.15** (parity with older “v2 + intensity” WDF scale). |
 | [`4-test8-v2-pr-intensity/scripts/test8_v2_pr_intensity.py`](4-test8-v2-pr-intensity/scripts/test8_v2_pr_intensity.py) | **Deprecated wrapper** — delegates to v4 and sets `DOR_PIPELINE_ROOT` to the task folder so old relative layouts still work. |
 | [`4-test8-v2-pr-intensity/scripts/sweep_pr_intensity_blend.py`](4-test8-v2-pr-intensity/scripts/sweep_pr_intensity_blend.py) | Sweeps `PR_INTENSITY_BLEND`; invokes `pipeline/scripts/test8_v4.py`; can write `blend_sweep_results.csv` under `pipeline/output/test8_v4/`. |
 
-**Outputs** live under **`<DOR_PIPELINE_ROOT>/output/<test8_v3|test8_v4>/`**: `parity/`, `experiment/` (or `experiment_<PR_INTENSITY_OUT_TAG>/`), `experiment_blend*/`, etc., each with `V8_Table1_Pooled_Metrics_Stochastic.csv`, `V8_Table2_…`, `run_manifest.json`. If `DOR_PIPELINE_ROOT` is unset, it defaults to the parent of `pipeline/scripts/` (i.e. **`pipeline/`**). **Older runs** may still be under `4-test8-v2-pr-intensity/output/test8_v2_pr_intensity/` from before the rename.
+**Outputs** live under **`<DOR_PIPELINE_ROOT>/output/<test8_v2|test8_v3|test8_v4>/`**: `parity/`, `experiment/` (or `experiment_<PR_INTENSITY_OUT_TAG>/`), `experiment_blend*/`, etc., each with `V8_Table1_Pooled_Metrics_Stochastic.csv`, `V8_Table2_…`, `run_manifest.json`. If `DOR_PIPELINE_ROOT` is unset, it defaults to the parent of `pipeline/scripts/` (i.e. **`pipeline/`**). **Older runs** may still be under `4-test8-v2-pr-intensity/output/test8_v2_pr_intensity/` from before the rename.
 
 **Environment variables** (see [`pipeline/scripts/_test8_sd_impl.py`](pipeline/scripts/_test8_sd_impl.py) docstring for the full list):
 
 | Variable | Role |
 |----------|------|
 | `PR_USE_INTENSITY_RATIO` | `0` / `1`: parity (flat PR ratio) vs experiment (intensity-weighted PR ratio only). |
-| `PR_INTENSITY_BLEND` | Float in `[0, 2]`; entry points default **0.65**; scales `(ratio_ext - ratio) × weight` when intensity is on. |
+| `PR_INTENSITY_BLEND` | Float in `[0, 2]`; v3/v4 entry points default **0.65** when unset; v2 does not set a default (impl default **1.0**). Scales `(ratio_ext - ratio) × weight` when intensity is on. |
 | `PR_INTENSITY_OUT_TAG` | Optional suffix for the experiment output subdir (avoids overwrites during sweeps). |
-| `PR_WDF_THRESHOLD_FACTOR` | Wet-day threshold scale at inference; defaults **1.15** (v3) or **1.65** (v4) if unset. |
+| `PR_WDF_THRESHOLD_FACTOR` | Wet-day threshold scale at inference; defaults **1.15** (v3) or **1.65** (v2, v4) if unset. |
 | `TEST8_MAIN_PERIOD_ONLY` | Default `1`: main 1981–2014 stack + metrics only. |
 | `TEST8_SEED` | Optional int; fixes RNG for reproducibility (may differ from Bhuwan’s published v2 numbers). |
 | `DOR_PIPELINE_ROOT` | Absolute path to experiment root (`scripts/`, `data/`, `output/`). |
-| `DOR_PIPELINE_ID` | `test8_v3` or `test8_v4` (normally set by the entry-point scripts). |
+| `DOR_PIPELINE_ID` | `test8_v2`, `test8_v3`, or `test8_v4` (normally set by the entry-point scripts). |
 | `DOR_TEST8_V2_PR_INTENSITY_ROOT` | Legacy alias for `DOR_PIPELINE_ROOT`. |
 | `DOR_TEST8_PR_DATA_DIR` | Optional override for memmap directory (default `<root>/data`). |
 
@@ -584,6 +596,8 @@ Both share the same three-step architecture:
 ## External product comparison (`6-product-comparison/`)
 
 **Purpose:** Compare **our** downscaled product to **published statistical downscaling archives** using a **common validation truth** (Iowa **GridMET** targets on the **216×192** crop), without claiming the external products were trained to GridMET.
+
+**Scope:** Historical **validation-period** metrics only (config default **2006–2014**). This folder does **not** run the OTBC **regrid** pipeline; it consumes **already-built** DOR NPZs and **interpolates** LOCA2/NEX to the benchmark grid (see **Clarifications** table above). For **climate-change signal** (e.g. SSP minus historical), use or add tooling outside this benchmark (e.g. scripts that compare future stacks to historical means).
 
 **Canonical DOR product in the benchmark:** Local **test8 PR-intensity** line (**`test8_v4`**) with **`PR_INTENSITY_BLEND=0.65`**, **`PR_USE_INTENSITY_RATIO=1`**, **`TEST8_SEED=42`**, default **`PR_WDF_THRESHOLD_FACTOR=1.65`**, outputs under [`pipeline/output/test8_v4/experiment_blend0p65/`](pipeline/output/test8_v4/experiment_blend0p65/) (see `run_manifest.json`). Historical copies of the same experiment may still exist under `4-test8-v2-pr-intensity/output/test8_v2_pr_intensity/experiment_blend0p65/`. **Blend scoring** (for documentation): `|pr Val_Ext99_Bias%| + 0.15 × pr Val_RMSE_pooled` across parity + sweep folders — **0.65 ranks first** (`6-product-comparison/scripts/verify_blend_choice.py`).
 
