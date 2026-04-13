@@ -2,13 +2,13 @@
 
 ## Local repository layout
 
-Top-level work folders use numeric prefixes: `1-week1`, `2-validate-tas-convergence`, `3-bilinear-vs-nn-regridding`, `4-test8-v2-pr-intensity`, `5-bias-correction-validation`, `6-product-comparison`, `7-fix-pr-splotchiness`, `8-WDF-overprediction-fix`, `9-additional-pr-RMSE-fixes`, `10-improve-wind`. **Spatial downscaling (test8 PR-intensity line) lives in the repo-root [`pipeline/`](pipeline/)** — scripts, README, and (when run) `output/test8_v3/` and `output/test8_v4/`. The folder `3-bilinear-vs-nn-regridding/pipeline/` is only the **regridding comparison** harness (bilinear vs NN), not the main stochastic pipeline. Ignore any stray root-level `pipeline/output/` from older experiments unless documented elsewhere. Paths in this file use these names; older chat logs may omit the prefix or use outdated numbers (e.g. `9-improve-wind` → now `10-improve-wind`).
+Top-level work folders use numeric prefixes: `1-week1`, `2-validate-tas-convergence`, `3-bilinear-vs-nn-regridding`, `4-test8-v2-pr-intensity`, `5-bias-correction-validation`, `6-product-comparison`, `7-fix-pr-splotchiness` (includes [`PLOTTING.md`](7-fix-pr-splotchiness/PLOTTING.md) for PR mean-map conventions), `8-WDF-overprediction-fix`, `9-additional-pr-RMSE-fixes`, `10-improve-wind`. **Spatial downscaling (test8 PR-intensity line) lives in the repo-root [`pipeline/`](pipeline/)** — scripts, README, and (when run) `output/test8_v3/` and `output/test8_v4/`. The folder `3-bilinear-vs-nn-regridding/pipeline/` is only the **regridding comparison** harness (bilinear vs NN), not the main stochastic pipeline. Ignore any stray root-level `pipeline/output/` from older experiments unless documented elsewhere. Paths in this file use these names; older chat logs may omit the prefix or use outdated numbers (e.g. `9-improve-wind` → now `10-improve-wind`).
 
 ### Server path verification (AI agents)
 
 The canonical UNC is `\\abe-cylo\modelsdev\Projects\WRC_DOR\`. Access requires **VPN / domain reachability** (and sometimes explicit credentials). On some machines, `\\abe-cylo` alone does not enumerate even when `\\abe-cylo\modelsdev\Projects\WRC_DOR\` works—**use the full path** in Explorer or scripts.
 
-**Spot-check (2026-04-09):** Top-level folders present: `Bias_Correction/`, `Data/`, `Spatial_Downscaling/`. Under `Data/`: `100km-ScenarioMIP/`, `Cropped_Colorado/`, `Cropped_Iowa/`, `Gridmet-CONUS/`, `Regridded_Iowa/` (with `MPI/mv_otbc/`). Under `Spatial_Downscaling/`: `Data_Regrided_Gridmet/`, `Data_WindEffect_Static/`, `Downscaled_Products/`, `Scripts/` (includes `test8.py`, `test8_v2.py`, `regrid_to_gridmet.py`, etc.), `test8_v2/` (`Iowa_Downscaled/`, `Regridded_Iowa/`). Matches the tree documented below; re-verify after major reorganizations.
+**Spot-check (2026-04-11):** Top-level folders present: `Bias_Correction/`, `Data/`, `Spatial_Downscaling/`. Under `Data/`: `100km-ScenarioMIP/`, `Cropped_Colorado/`, `Cropped_Iowa/`, `Gridmet-CONUS/`, `Regridded_Iowa/` (with `MPI/mv_otbc/`). Under `Spatial_Downscaling/`: `Data_Regrided_Gridmet/`, `Data_WindEffect_Static/`, `Downscaled_Products/`, `Scripts/` (includes `test8.py`, `test8_v2.py`, `regrid_to_gridmet.py`, etc.), `test8_v2/` (`Iowa_Downscaled/`, `Regridded_Iowa/`). `Regridded_Iowa/` on server also contains `geo_static.npy` and `gridmet_targets_19810101-20141231.dat` at the top level (alongside `geo_mask.npy`, `Regridded_Elevation_4km.npz`, and `MPI/`). Matches the tree documented below; re-verify after major reorganizations.
 
 ## Project Overview
 This is a climate downscaling and bias correction research project. The goal is to take coarse (~100km) GCM (Global Climate Model) data and produce high-resolution (4km) climate data over Iowa for use in hydrological modeling (WEPP).
@@ -51,7 +51,8 @@ This is a climate downscaling and bias correction research project. The goal is 
 4. Regrid bias-corrected GCM from 100km → 4km (GridMET grid)
          Script: regrid_to_gridmet.py  (MPI only, uses xarray-regrid)
                  regrid_all_models_iowa.py  (all 5 GCMs)
-         Method: conservative for PR, bilinear (linear) for all others
+         Method (test8 / pre-test8_v2 default in `regrid_to_gridmet.py`): conservative for PR, bilinear (linear) for all others
+         **Method actually used to produce the test8_v2 inputs (`Regridded_Iowa/MPI/mv_otbc/`): bilinear for PR.** Bhuwan confirmed this in chat (`bhuwan-info.txt` line 414: "I also used bilinear interpolation for precipitation. Which worked well for extremes"). For the other 5 variables in test8_v2, Bhuwan was unsure when asked and said he'd check (`bhuwan-info.txt` line 479: "I'm not sure about the other variables, let me check") and never followed up — assumption is bilinear via the same `regrid_to_gridmet.py` defaults, but this is **not explicitly confirmed**. Any test8_v2-comparable rerun should use bilinear for all variables until Bhuwan says otherwise.
          THIS IS WHERE THE SPATIAL SMOOTHING HAPPENS (cell boundary discontinuities resolved)
 
 5. Apply stochastic downscaling
@@ -384,6 +385,8 @@ Data/
 │   ├── MPI/
 │   │   └── mv_otbc/  Regridded 4km files (all 6 vars × historical + SSP585)
 │   ├── geo_mask.npy
+│   ├── geo_static.npy
+│   ├── gridmet_targets_19810101-20141231.dat
 │   └── Regridded_Elevation_4km.npz
 │
 ├── Gridmet-CONUS/    Full CONUS GridMET .nc files (one per var per year)
@@ -648,7 +651,7 @@ Spatial validation maps generated for all 6 vars: single-day snapshots (5 dates)
 
 **Time-mean and seasonal maps** show the pipeline working as designed:
 - **tasmax, tasmin**: Broad north-south temperature gradient is well captured. DOR is slightly smoother than GridMET (terrain-driven microclimate features are averaged out). However, **DOR is systematically too warm at the northern edge** of the domain — the north-south gradient is weaker in DOR than in GridMET. This warm bias is not spatially uniform; it is concentrated in the north, suggesting MPI's temperature gradient over Iowa is weaker than observed. The delta-mapping preserves whatever gradient the GCM produces, so this is inherited from the GCM/BC, not introduced by the downscaler. The same pattern appears in **huss** (too humid in the north) because humidity is temperature-dependent.
-- **pr**: The climatological pattern (wetter east, drier west) is captured, and magnitudes are correct. However, DOR pr fields have visible **splotchiness** — irregular blobs of elevated/depressed precipitation that don't appear in GridMET's smoother observed fields. This is distinct from the GCM-cell blockiness visible in single-day maps. The splotchiness is a **stochastic noise artifact**: test8_v2's spatially correlated multiplicative noise (correlation length 35 px for pr) leaves residual spatial texture when averaged over many days because the noise doesn't perfectly cancel. This is a legitimate imperfection and exactly the kind of thing that would improve with better spatial autocorrelation tuning.
+- **pr**: The climatological pattern (wetter east, drier west) is captured, and magnitudes are correct. DOR pr fields can show **splotchiness** — irregular blobs in **time-mean** maps that look unlike smooth GridMET — especially on **short** averaging windows (e.g. 2006–2014 alone). On the **full historical** mean (e.g. 1981–2014), maps typically **resemble GridMET** much more closely; see **Time-mean PR maps** (below). Single-day maps remain GCM-timeline mismatched. Residual texture also reflects stochastic multiplicative noise (test8_v2 correlation length 35 px for pr) not averaging to zero; spatial autocorrelation tuning remains relevant.
 - **rsds**: Strong match across all seasons. North-south gradient shifts with season and DOR tracks it.
 - **wind**: Weakest spatial match. GridMET has fine-scale wind features (terrain channeling, land-use roughness) at 4km that have no representation in 100km GCM data. DOR captures the broad pattern (windier northwest, calmer southeast) but lacks fine-scale structure. Blockiness is most visible here. This is a resolution limitation of the source data.
 - **huss**: Good match. Moisture gradient (dry northwest, humid southeast) well reproduced. Same northern warm/humid bias as temperature.
@@ -656,6 +659,26 @@ Spatial validation maps generated for all 6 vars: single-day snapshots (5 dates)
 ### Local disk note (PR-intensity sweeps)
 
 To save space after the benchmark, **large `Stochastic_V8_Hybrid_*.npz`** (and any `Deterministic_*.npz`) were removed from intermediate blend folders (`experiment_blend0p25` … `experiment/`), keeping **CSVs + `run_manifest.json`**. **Full `npz` retained** for **`parity/`** and **`experiment_blend0p65/`** (under the old `test8_v2_pr_intensity` output tree and/or `pipeline/output/test8_v4/`). (~37 GiB freed; see `6-product-comparison/WORKLOG.md`.)
+
+### Time-mean PR maps: pick the aggregation window to match the question
+
+Side-by-side **time-mean** maps (GridMET vs DOR) are sensitive to **how many years** are averaged.
+
+- The **2006–2014** span is only the **validation** split (~9 years). Mean maps for that window are **not** a good stand-in for “how does our downscaled precipitation look in long-run aggregate?” Prominent **dark wet patches** in DOR that stand out against GridMET on **short** windows often **ease or disappear** when the same style of plot is made for the **full historical** period on the standard memmaps (**1981–01–01–2014–12–31**, i.e. on the order of **three decades**—sometimes described informally as ~1982–2014 depending on slicing). On that longer average, the DOR field **typically looks much more like GridMET** spatially.
+
+- **Lesson:** Do not conclude that the pipeline is systematically wrong from a **short-window** mean map alone. Align the plotted calendar range with the scientific question (short window for test-era behavior; full historical for climatological representativeness). Investigation notes and tooling: [`7-fix-pr-splotchiness/`](7-fix-pr-splotchiness/).
+
+### Default styling for mean **pr** maps (GridMET vs model / DOR)
+
+For **side-by-side** mean precipitation maps in this project, the **canonical** display convention is:
+
+1. **`Blues`** colormap.
+2. **Independent 2–98%** linear stretch **per panel**: each of the two fields gets its own `vmin`/`vmax` from the 2nd and 98th percentiles of finite values (`_vmin_vmax_one` in [`7-fix-pr-splotchiness/scripts/plot_validation_agg_mean_pr_obs_vs_gcm.py`](7-fix-pr-splotchiness/scripts/plot_validation_agg_mean_pr_obs_vs_gcm.py)). **Two colorbars** (one per panel) so the right-hand (GCM or DOR) panel is not washed out by GridMET’s amplitude range.
+3. **Typical entry points:** `plot_gridmet_pipeline_side_by_side.py dor` (**default**; omit `--shared-scale`), [`plot_period_comparison.py`](7-fix-pr-splotchiness/scripts/plot_period_comparison.py) (multi-period figure sets under `7-fix-pr-splotchiness/figures/period-comparison/`), and `plot_validation_agg_mean_pr_obs_vs_gcm.py` for drivers-only checks.
+
+Optional: pass **`--shared-scale`** to `dor` or use `_pair_vmin_vmax`-style plotting when you **intentionally** want **one** color scale for both panels (2–98% on the pooled finite values).
+
+Full copy-paste examples and script list: [`7-fix-pr-splotchiness/PLOTTING.md`](7-fix-pr-splotchiness/PLOTTING.md).
 
 ---
 
@@ -673,9 +696,9 @@ To save space after the benchmark, **large `Stochastic_V8_Hybrid_*.npz`** (and a
 
 ### Not actionable (documented)
 
-- **PR splotchiness in time-aggregated maps**: Dark splotches (high precipitation) visible in time-mean DOR maps that don't appear in GridMET. Investigated extensively in [`7-fix-pr-splotchiness/`](7-fix-pr-splotchiness/). After 5 attempts at fixes (noise debiasing, ratio smoothing) and diagnostic decomposition across pipeline stages and GCMs, determined that **the splotches originate from the GCM's coarse spatial precipitation pattern**, not from the downscaler. The downscaler faithfully reproduces what the GCM gives it; the GCM has ~3-4 cells across Iowa whose relative wetness doesn't match GridMET. This is not fixable in the spatial downscaler. Set `DOR_MULTIPLICATIVE_NOISE_DEBIAS=0` (noise debias off).
+- **PR splotchiness in time-aggregated maps**: Dark regions in **short-window** (e.g. **2006–2014**) time-mean DOR maps were alarming when compared to GridMET; investigation in [`7-fix-pr-splotchiness/`](7-fix-pr-splotchiness/) explored noise debiasing, ratio smoothing, and GCM-origin hypotheses. **Important clarification:** mean maps for the **full historical** period on the standard stack (**1981–2014**) look **much closer to GridMET**; a **short validation window** is a **poor** proxy for long-run aggregate appearance. Do not over-interpret a single short-period mean map. Mechanistic work in that folder (GCM pattern bleed-through, `spatial_ratio` train/test mismatch, stochastic texture) remains relevant for deep dives; see also **Time-mean PR maps** above. Set `DOR_MULTIPLICATIVE_NOISE_DEBIAS=0` (noise debias off) per that investigation’s outcome. **Note:** The `splotch_metric` scalar was an unreliable proxy — do not use it for future work.
 - **PR and wind KGE near zero**: KGE ≈ 0.02 for pr, ≈ 0.08 for wind. Fundamental GCM limitation — can't track individual storm events at 100km. Stayed ~0.02 across test8, test8_v2, v9, and all three benchmark products (LOCA2 0.023, NEX 0.002). Won't improve until temporal downscaling is addressed (correcting *which days* it rains, not just *how much*). Not the current focus — Bhuwan said to work on spatial downscaling first.
-- **PR RMSE gap vs NEX — fully understood (Apr 2026)**: DOR's RMSE (9.91) vs NEX (8.64) is a 1.27 gap. The RMSE decomposition shows that with near-zero correlation (r ≈ 0.025) and variance-matched output (σ_sim ≈ σ_obs), RMSE² ≈ 2σ²(1−r). NEX achieves lower RMSE by *compressing variance* (Ext99 = −25.3%), not by having better correlation — NEX's KGE is 0.002, even worse than DOR. Tuning noise parameters (correlation length, amplitude, scaling) cannot close this gap: the entire noise RMSE budget is ~0.7 (stochastic 9.91 − deterministic 9.21), and a corr_len sweep confirmed only 0.013 improvement from the best value. The PR-intensity blend adds ~0.4 to RMSE but parity still doesn't beat NEX (9.51 vs 8.64). **The only mathematical path to beating NEX without sacrificing Ext99 is improving r from ~0.025 to ~0.26** — making the daily spatial pattern partially informed rather than random. A cross-variable noise conditioning approach (using the GCM's temperature/humidity fields, which have KGE ~0.8, to bias the precipitation noise field) is the current hypothesis. See `9-additional-pr-RMSE-fixes/BRAINSTORMING.md` and `PLAN-CROSS-VARIABLE-NOISE.md`.
+- **PR RMSE gap vs NEX — fully understood (Apr 2026)** (see also [`9-additional-pr-RMSE-fixes/WHY-VARIANCE-DRIVES-RMSE.md`](9-additional-pr-RMSE-fixes/WHY-VARIANCE-DRIVES-RMSE.md) for an intuitive explanation): DOR's RMSE (9.91) vs NEX (8.64) is a 1.27 gap. The RMSE decomposition shows that with near-zero correlation (r ≈ 0.025) and variance-matched output (σ_sim ≈ σ_obs), RMSE² ≈ 2σ²(1−r). NEX achieves lower RMSE by *compressing variance* (Ext99 = −25.3%), not by having better correlation — NEX's KGE is 0.002, even worse than DOR. Tuning noise parameters (correlation length, amplitude, scaling) cannot close this gap: the entire noise RMSE budget is ~0.7 (stochastic 9.91 − deterministic 9.21), and a corr_len sweep confirmed only 0.013 improvement from the best value. The PR-intensity blend adds ~0.4 to RMSE but parity still doesn't beat NEX (9.51 vs 8.64). **The only mathematical path to beating NEX without sacrificing Ext99 is improving r from ~0.025 to ~0.26** — making the daily spatial pattern partially informed rather than random. A cross-variable noise conditioning approach (using the GCM's temperature/humidity fields, which have KGE ~0.8, to bias the precipitation noise field) is the current hypothesis. See `9-additional-pr-RMSE-fixes/BRAINSTORMING.md` and `PLAN-CROSS-VARIABLE-NOISE.md`.
 - **Tasmax KGE/RMSE trailing LOCA2/NEX by 1-2%**: Likely inherited from MPI's weak north-south temperature gradient passed through OTBC. Spatial maps confirm the warm bias is concentrated in the north — a GCM/BC issue, not a downscaler issue. DOR already wins on tasmax Ext99 and Lag1. Would need BC investigation, which Bhuwan deferred.
 
 ### Completed / deferred

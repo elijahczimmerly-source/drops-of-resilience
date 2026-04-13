@@ -64,6 +64,12 @@ from plot_validation_agg_mean_pr_obs_vs_gcm import (
 )
 
 
+def _mean_period_label(val_start: str, val_end: str) -> str:
+    v0 = pd.Timestamp(val_start)
+    v1 = pd.Timestamp(val_end)
+    return f"{v0.year}–{v1.year}"
+
+
 def _gridmet_mean_validation(
     gridmet_targets: str,
     H: int,
@@ -245,8 +251,9 @@ def cmd_coarse_bc(ns: argparse.Namespace) -> int:
 
     o_coarse = _fine_to_coarse_bilinear(o_fine, lat_f, lon_f, lat_c, lon_c)
 
-    title_left = "GridMET (to coarse grid)\nmean 2006–2014"
-    title_right = (ns.title_right or "GCM OTBC+physics (coarse)\nmean 2006–2014").replace(
+    _mp = _mean_period_label(ns.val_start, ns.val_end)
+    title_left = f"GridMET (to coarse grid)\nmean {_mp}"
+    title_right = (ns.title_right or f"GCM OTBC+physics (coarse)\nmean {_mp}").replace(
         "\\n", "\n"
     )
     suptitle = ns.suptitle or (
@@ -290,8 +297,9 @@ def cmd_regrid_gcm(ns: argparse.Namespace) -> int:
         o = np.nanmean(obs_pr[val_mask], axis=0)
         g = np.nanmean(gcm_pr[val_mask], axis=0)
 
-    tl = "GridMET (target)\nmean 2006–2014"
-    tr = (ns.title_right or "GCM (OTBC → 4 km)\nmean 2006–2014").replace("\\n", "\n")
+    _mp = _mean_period_label(ns.val_start, ns.val_end)
+    tl = f"GridMET (target)\nmean {_mp}"
+    tr = (ns.title_right or f"GCM (OTBC → 4 km)\nmean {_mp}").replace("\\n", "\n")
     st = ns.suptitle or "pr — after regrid_to_gridmet (drivers on 4 km grid)"
     if ns.shared_scale:
         _save_obs_gcm_pair_shared(Path(ns.out), o, g, tl, tr, st)
@@ -331,8 +339,9 @@ def cmd_dor(ns: argparse.Namespace) -> int:
         o = np.nanmean(obs_pr[val_mask], axis=0)
         d = np.nanmean(dor_u[val_mask], axis=0)
 
-    tl = "GridMET (target)\nmean 2006–2014"
-    tr = (ns.title_right or "DOR\nmean 2006–2014").replace("\\n", "\n")
+    _mp = _mean_period_label(ns.val_start, ns.val_end)
+    tl = f"GridMET (target)\nmean {_mp}"
+    tr = (ns.title_right or f"DOR\nmean {_mp}").replace("\\n", "\n")
     st = ns.suptitle or "pr — after test8 downscale + Schaake"
     if ns.shared_scale:
         from plot_validation_agg_mean_pr import _save_obs_dor_pair

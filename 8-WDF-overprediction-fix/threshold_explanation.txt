@@ -27,7 +27,7 @@ What the threshold does
   Bhuwan recognized this and added the 1.15 factor — raise the threshold by 15% to compensate. But 15% wasn't enough. The baseline still overpredicted WDF by +3.4 percentage points (35.7% simulated vs 32.3%
   observed).
 
-  How we got 1.50
+  How we got 1.65
 
-  We swept PR_WDF_THRESHOLD_FACTOR over {1.15, 1.20, 1.25, 1.30, 1.35, 1.40, 1.45, 1.50} on the correct 216×192 Regridded_Iowa data, running the full pipeline for each value and comparing all metrics. The
-  relationship is monotonic — higher factor = more aggressive censoring = fewer wet days. Factor 1.50 is the first value that brings simulated WDF within 1 percentage point of observed (33.2% vs 32.3%).
+  We swept PR_WDF_THRESHOLD_FACTOR over {1.15, 1.20, 1.25, etc} on the correct 216×192 Regridded_Iowa data, running the full pipeline for each value and comparing all metrics. The
+  relationship is monotonic — higher factor = more aggressive censoring = fewer wet days. Factor 1.65 brings simulated WDF closest to observed.

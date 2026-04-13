@@ -59,7 +59,7 @@ For example: if the GCM says the northwest is anomalously wet today relative to 
 
 **Why this is novel:** Most stochastic downscalers treat the noise as fully random. This would make the noise partially informed by the GCM's spatial dynamics while remaining stochastic. It's not the same as what LOCA2 does (analog matching) or NEX does (quantile mapping) — it's using the GCM's own spatial departure as a weak prior on the noise field.
 
-**Risk:** The GCM's spatial departures at 4km may be meaningless — after bilinear interpolation from ~100km, the spatial anomaly within a GCM cell is essentially flat. The "signal" would only exist at the inter-cell scale (~3-4 cells across Iowa), giving very few degrees of freedom.
+**Risk:** The GCM's spatial departures at 4km may be meaningless — after bilinear interpolation from ~100km, the spatial anomaly within a GCM cell is essentially flat. The "signal" would only exist at the inter-cell scale, giving limited degrees of freedom.
 
 **How to test:** Compute `gcm_daily_anomaly = gcm_day / gcm_climatology` (ratio relative to training-period mean for that semi-monthly period), then correlate it with `obs_daily_anomaly = obs_day / obs_climatology` across pixels. If r > 0, there's spatial signal to exploit. If r ≈ 0, this won't help.
 

@@ -1,8 +1,14 @@
 # Fix PR Splotchiness in Time-Aggregated Maps
 
+## Viewer guidance (read before interpreting any time-mean map)
+
+**Calendar span:** Maps of **mean** DOR vs GridMET for **2006–2014 alone** (the short validation window) can look **much worse** than maps averaged over the **full historical** memmap period (**1981–2014**). The former is **not** a substitute for judging long-run climatological fidelity. See [`WORKLOG.md`](WORKLOG.md) §12, [`../dor-info.md`](../dor-info.md) (*Time-mean PR maps*), and [`PLOTTING.md`](PLOTTING.md).
+
+**Color scaling:** Use the **pipeline default** for side-by-side means: independent **2–98%** per panel, two colorbars (`PLOTTING.md`). A single shared scale across panels can wash out the model field.
+
 ## The Problem
 
-When DOR precipitation output is averaged over the full validation period (2006-2014), the resulting spatial map shows irregular blobs ("splotches") of elevated and depressed mean precipitation that are not present in the smooth GridMET observed climatology. **Early plan text** tied artifact scale to the **~35 px** noise correlation length; **side-by-side maps** also show **broader** wet/dry structure (tens to 100+ pixels), so more than one spatial scale may matter. They are distinct from the GCM-cell blockiness visible in single-day maps.
+When DOR precipitation output is averaged over the validation period (2006-2014), the resulting spatial map can show irregular blobs ("splotches") of elevated and depressed mean precipitation that are not present in the smooth GridMET observed climatology on **that** window. **Early plan text** tied artifact scale to the **~35 px** noise correlation length; **side-by-side maps** also show **broader** wet/dry structure (tens to 100+ pixels), so more than one spatial scale may matter. They are distinct from the GCM-cell blockiness visible in single-day maps.
 
 This matters because:
 - A **noise-driven** story says stochastic multiplicative noise introduces systematic spatial bias in the climatological mean; an **alternative** story says bias is dominated by **deterministic** `spatial_ratio` train/test mismatch (see **Competing hypotheses** below). The fix depends on which dominates.
@@ -365,7 +371,7 @@ Rationale and experiment history: **[`WORKLOG.md`](WORKLOG.md)**.
 
 | Item | Outcome |
 |------|--------|
-| **Root cause** | **GCM spatial pattern.** The GCM has ~3-4 cells across Iowa; their relative wetness doesn't match GridMET and varies between training and validation periods. The downscaler passes this through. |
+| **Root cause** | **GCM spatial pattern.** The GCM cells' relative wetness doesn't match GridMET and varies between training and validation periods. The downscaler passes this through. |
 | **Noise debias (Attempts 1-3)** | **Closed — ineffective.** Splotch metric flat across all attempts (0.078 ± 0.001). Set `DOR_MULTIPLICATIVE_NOISE_DEBIAS=0`. |
 | **Attempt 4 (deterministic floor)** | Deterministic splotch 0.0709 ≈ stochastic 0.0710. Confirmed noise is not the cause. |
 | **Attempt 5 (ratio smoothing)** | Failed — boundary contamination at moderate sigma, field destruction at large sigma. Moot anyway since the splotches are GCM-origin. |

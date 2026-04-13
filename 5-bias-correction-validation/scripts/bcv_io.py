@@ -125,10 +125,20 @@ def load_bc_historical(
 
 
 def load_raw_concat(model: str, var: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
+    return load_raw_concat_years(model, var, VAL_START, VAL_END)
+
+
+def load_raw_concat_years(
+    model: str,
+    var: str,
+    year_start: int,
+    year_end: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
+    """Concatenate yearly Raw NPZ files for ``year_start``..``year_end`` (inclusive)."""
     parts = []
     times = []
     lat = lon = None
-    for y in range(VAL_START, VAL_END + 1):
+    for y in range(year_start, year_end + 1):
         p = raw_year_path(model, var, y)
         if not p.is_file():
             return None
@@ -180,6 +190,22 @@ def slice_to_bc_validation(
 ) -> tuple[np.ndarray, np.ndarray]:
     m = validation_mask(time)
     return data[m], normalize_time_days(time[m])
+
+
+def slice_to_date_range(
+    data: np.ndarray,
+    time: np.ndarray,
+    start: str,
+    end: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Restrict ``data`` to calendar days in ``[start, end]`` (inclusive)."""
+    import pandas as pd
+
+    t = normalize_time_days(time)
+    t0 = np.datetime64(pd.Timestamp(start), "D")
+    t1 = np.datetime64(pd.Timestamp(end), "D")
+    m = (t >= t0) & (t <= t1)
+    return data[m], normalize_time_days(t[m])
 
 
 def qsat_kgkg(t_celsius: np.ndarray, pressure_pa: float = 100_000.0) -> np.ndarray:

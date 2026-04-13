@@ -1,5 +1,9 @@
 # PR splotchiness / noise debias — validation results
 
+**Note on `splotch_metric`:** The scalar metric used throughout this investigation (spatial std of time-mean DOR/OBS ratio) was an unreliable proxy. It did not correspond to the visual splotchiness seen in the plots and should not be treated as a meaningful measure of the actual problem. It is retained in this file for completeness but should not inform future decisions.
+
+**Note on time windows:** Many tables below use **2006–2014** (validation split). **Short-window** time-mean maps can look much worse than **full historical** (1981–2014) means for eyeball comparison to GridMET. See [`WORKLOG.md`](WORKLOG.md) §12 and [`../dor-info.md`](../dor-info.md) (*Time-mean PR maps*).
+
 Narrative of **decisions and experiments** (why things were tried): [`WORKLOG.md`](WORKLOG.md).
 
 Standalone record of runs executed against UNC data (`\\abe-cylo\modelsdev\Projects\WRC_DOR\Spatial_Downscaling\test8_v2\Regridded_Iowa`, **216×192** grid). See `FIX-PR-SPLOTCHINESS-PLAN.md` for methodology.
@@ -223,7 +227,7 @@ On this run, deterministic vs stochastic barely moves the **global** splotch num
 
 ## Final conclusion (2026-04-09)
 
-**Task closed.** After 5 attempts at fixing pr splotchiness and diagnostic decomposition across pipeline stages and GCMs, determined that the splotches originate from the GCM's coarse spatial precipitation pattern, not from the downscaler. The GCM has ~3-4 cells across Iowa whose relative wetness doesn't match GridMET. This is not fixable in the spatial downscaler.
+**Task closed.** After 5 attempts at fixing pr splotchiness and diagnostic decomposition across pipeline stages and GCMs, determined that the splotches originate from the GCM's coarse spatial precipitation pattern, not from the downscaler. The GCM cells' relative wetness doesn't match GridMET. This is not fixable in the spatial downscaler.
 
 - Set `DOR_MULTIPLICATIVE_NOISE_DEBIAS=0` (noise debias off) going forward.
 - WDF fix (`8-WDF-overprediction-fix/`) and wind improvement (`10-improve-wind/`) are no longer blocked by this task.

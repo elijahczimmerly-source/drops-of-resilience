@@ -158,7 +158,7 @@ This would be a genuinely novel contribution — no existing operational downsca
 
 ### If it doesn't work (R² ≈ 0 in Phase 0)
 
-Then the GCM simply doesn't carry usable spatial information about precipitation placement at the 4km scale after regridding. This is a fundamental limitation of ~100km GCMs with only 3–4 cells across Iowa. The RMSE gap to NEX would be documented as a structural consequence of preserving realistic variance — a deliberate tradeoff, not a failure. DOR already beats LOCA2's RMSE in the deterministic case (9.21 vs 9.47), and LOCA2 is the fair comparison since it also preserves extremes.
+Then the GCM simply doesn't carry usable spatial information about precipitation placement at the 4km scale after regridding. This is a fundamental limitation of ~100km GCMs. The RMSE gap to NEX would be documented as a structural consequence of preserving realistic variance — a deliberate tradeoff, not a failure. DOR already beats LOCA2's RMSE in the deterministic case (9.21 vs 9.47), and LOCA2 is the fair comparison since it also preserves extremes.
 
 ## File organization
 

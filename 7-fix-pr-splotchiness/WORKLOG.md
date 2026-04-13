@@ -6,7 +6,11 @@ This file records **what was tried**, **why choices were made**, and **how concl
 
 ## 1. Problem statement (from plan)
 
-Time-mean PR maps showed ~35 px “splotches” (spatial std in mean sim/obs ratio). Root causes identified in the plan: asymmetric multiplicative noise clip, WDF censoring, AR(1) persistence, and FFT correlation length — together producing **non–zero-mean** effective multipliers per pixel/period.
+Time-mean PR maps showed ~35 px “splotches” (areas of elevated/depressed precipitation visible in time-aggregated DOR maps but not in GridMET).
+
+**Note on `splotch_metric`:** The scalar metric used throughout this investigation (spatial std of time-mean DOR/OBS ratio) was an unreliable proxy. It did not correspond to the visual splotchiness seen in the plots and could move in the wrong direction (e.g., “improve” when plots looked the same, or worsen when a fix was visually helpful in one region). Do not treat `splotch_metric` values in this file or `VALIDATION_RESULTS.md` as meaningful measures of the actual problem.
+
+Root causes identified in the plan: asymmetric multiplicative noise clip, WDF censoring, AR(1) persistence, and FFT correlation length — together producing **non–zero-mean** effective multipliers per pixel/period.
 
 **Chosen fix (plan):** After `calibrate()`, estimate per-pixel/period **mean effective multiplier** over training days using the **same** noise → clip → WDF chain as inference, then **divide** wet values at inference by that mean so long-run mean multiplier → 1.
 
@@ -169,8 +173,20 @@ Same `TEST8_SEED=42`, `PR_INTENSITY_BLEND=0.65`, UNC memmaps, **216×192** grid 
 
 ## 11. Final diagnosis — splotches originate from GCM (2026-04-09)
 
-After Attempt 5 (ratio smoothing) also failed to improve the splotch metric, generated pipeline-stage diagnostic plots comparing GridMET vs GCM input vs DOR output at each stage, and compared across GCMs. The splotch patterns visible in time-aggregated DOR maps are already present in the GCM's coarse precipitation field before the downscaler runs. The GCM has ~3-4 cells across Iowa, and their relative wetness doesn't match GridMET. The downscaler's spatial_ratio faithfully transmits this pattern.
+After Attempt 5 (ratio smoothing) also failed to improve the splotch metric, generated pipeline-stage diagnostic plots comparing GridMET vs GCM input vs DOR output at each stage, and compared across GCMs. The splotch patterns visible in time-aggregated DOR maps are already present in the GCM's coarse precipitation field before the downscaler runs. The GCM cells' relative wetness doesn't match GridMET. The downscaler's spatial_ratio faithfully transmits this pattern.
 
 **Conclusion:** The pr splotches are a GCM limitation, not a downscaler artifact. Not fixable in the spatial downscaler. Task closed. `DOR_MULTIPLICATIVE_NOISE_DEBIAS=0` (off) going forward.
 
-*Last updated: 2026-04-09 (task closed — splotches are GCM-origin).*
+---
+
+## 12. Interpretation — aggregation window and “the mystery” (2026)
+
+**What happened:** Validation used **side-by-side time-mean** maps (DOR vs GridMET) for **2006–2014** (the short held-out window). Those maps showed **large dark wet patches** in the interior that were **not** visible in GridMET — alarming for pipeline quality.
+
+**Resolution:** The same style of plot for the **full historical** period on the standard memmaps (**1981–2014**, sometimes described informally as ~1982–2014) looks **much more like GridMET**; the dramatic splotches seen on the **short** window are **not** representative of long-run time-aggregate behavior. A **short** average emphasizes interannual noise and validation-era mismatch; a **long** climatological mean answers a different question.
+
+**Takeaway:** Always **match the plotted years to the question**. For “how does the product look in climatological mean?”, use a **long** historical span. For “how does the test era look?”, a short window is appropriate but **easy to over-read** in isolation.
+
+**Plotting:** Canonical **mean-map** styling (2–98% **per panel**, two colorbars) is documented in [`PLOTTING.md`](PLOTTING.md) and [`../dor-info.md`](../dor-info.md). Older drafts of [`PLAN-REDO-PERIOD-PLOTS.md`](PLAN-REDO-PERIOD-PLOTS.md) required a single global color scale; **`plot_period_comparison.py` now follows the pipeline default** instead.
+
+*Last updated: 2026-04-12 (§12: aggregation window + plotting canon).*
