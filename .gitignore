@@ -1,4 +1,4 @@
-# Large data files
+# Large data files (memmaps, arrays — do not add rules that drop plots/reports, e.g. *.png under */output/)
 *.dat
 *.npy
 *.npz

@@ -1,13 +1,15 @@
 ACTIVE:
-
-Fix pr RMSE (9-additional-pr-RMSE-fixes/)
+Make sure WDF fix doesn't break climate change signal
+Try benchmarking at their resolution
+figure out why Bhuwan says plots look bad
 
 
 
 
 
 ON HOLD:
-
+  Fix pr RMSE (9-additional-pr-RMSE-fixes/)
+  fix wind
 - BC-first vs downscale-first ordering (deferred per Bhuwan — do after spatial downscaling is solid)
 - Investigate pipeline pieces assuming spatial uniformity
 - Explore post-correction consistency problems
