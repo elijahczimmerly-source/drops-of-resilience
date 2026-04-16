@@ -1,0 +1,23 @@
+{
+  "schema": "dor.pipeline.invocation.v1",
+  "created_utc": "2026-04-14T22:27:27.369213+00:00",
+  "pipeline_id": "test8_v3",
+  "entry_script": "test8_v3.py",
+  "repo_root": "C:\\drops-of-resilience",
+  "pipeline_root": "C:\\drops-of-resilience\\pipeline",
+  "git_head": "a633c21801f36b5f556aff1e31808640c788f735",
+  "python": "C:\\Users\\Elijah\\miniconda3\\python.exe",
+  "environment": {
+    "DOR_PIPELINE_ROOT": "C:\\drops-of-resilience\\pipeline",
+    "DOR_TEST8_PR_DATA_DIR": "D:\\drops-resilience-data\\WRC_DOR_cache\\Spatial_Downscaling\\test8_v2\\Regridded_Iowa\\MPI\\mv_otbc",
+    "DOR_TEST8_GRIDMET_TARGETS_DAT": "D:\\drops-resilience-data\\WRC_DOR_cache\\Spatial_Downscaling\\test8_v2\\Regridded_Iowa\\gridmet_targets_19810101-20141231.dat",
+    "DOR_TEST8_GEO_MASK_NPY": "D:\\drops-resilience-data\\WRC_DOR_cache\\Spatial_Downscaling\\test8_v2\\Regridded_Iowa\\geo_mask.npy",
+    "TEST8_SEED": "42",
+    "TEST8_MAIN_PERIOD_ONLY": "0",
+    "DOR_PIPELINE_ID": "test8_v3",
+    "PR_USE_INTENSITY_RATIO": "1",
+    "PR_INTENSITY_BLEND": "0.65",
+    "PR_INTENSITY_OUT_TAG": "blend0p65"
+  },
+  "purpose": "Distinct stochastic downscale for benchmark/climate-signal; do not mix with other pipeline_ids. After completion, run_manifest.json is written by _test8_sd_impl."
+}

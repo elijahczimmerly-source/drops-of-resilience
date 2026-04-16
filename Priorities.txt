@@ -2,9 +2,8 @@ ACTIVE:
 Make sure WDF fix doesn't break climate change signal
 Try benchmarking at their resolution
 
-1. get pipeline folder good
-2. add climate change signal functionality to 6-product-comparison and redo benchmarking for test8_v2, test8_v3, and test8_4 (as described in C:\drops-of-resilience\pipeline)
-3. redo all benchmarks but at LOCA2 and NEX resolution (~6km, ~25-28km)
+1. add climate change signal functionality to 6-product-comparison and redo benchmarking for test8_v2, test8_v3, and test8_4 (as laid out in C:\drops-of-resilience\pipeline)
+2. redo all benchmarks but at LOCA2 and NEX resolution (~6km, ~25-28km)
 
 
 

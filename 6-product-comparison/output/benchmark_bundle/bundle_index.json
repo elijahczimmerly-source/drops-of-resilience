@@ -1,0 +1,23 @@
+{
+  "bundle_dir": "C:\\drops-of-resilience\\6-product-comparison\\output\\benchmark_bundle",
+  "pipelines": [
+    {
+      "pipeline_id": "test8_v2",
+      "dor_output_dir": "D:\\drops-resilience-data\\dor_pipeline_output\\test8_v2\\parity",
+      "has_invocation": true,
+      "has_run_manifest": true
+    },
+    {
+      "pipeline_id": "test8_v3",
+      "dor_output_dir": "D:\\drops-resilience-data\\dor_pipeline_output\\test8_v3\\experiment_blend0p65",
+      "has_invocation": true,
+      "has_run_manifest": true
+    },
+    {
+      "pipeline_id": "test8_v4",
+      "dor_output_dir": "D:\\drops-resilience-data\\dor_pipeline_output\\test8_v4\\experiment_blend0p65",
+      "has_invocation": true,
+      "has_run_manifest": true
+    }
+  ]
+}

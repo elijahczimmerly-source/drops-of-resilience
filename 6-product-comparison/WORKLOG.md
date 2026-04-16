@@ -4,6 +4,76 @@ Append-only audit trail. README summarizes usage; this file records **decisions 
 
 ---
 
+## 2026-04-14 — End-to-end run (local D: cache + shared DOR NPZs)
+
+**Fixed:** `run_benchmark._figures` missing `pipeline_id` argument (NameError).
+
+**Batch benchmark:** `DOR_BENCHMARK_SHARED_NPZ_ROOT=D:\drops-resilience-data\dor_npz\shared_benchmark` — `benchmark_summary_test8_v2.csv` / `v3` / `v4` + KGE/Ext99 PNGs (three runs use the same v8_2 NPZ mirror; metrics identical per ID).
+
+**Climate signal:** `run_climate_signal_stages.py` respects `DOR_BENCHMARK_SHARED_NPZ_ROOT` for S4 DOR rows; outputs `climate_signal_by_stage.csv`, `climate_signal_preservation.csv`.
+
+**Extended diagnostics:** `stage_diagnostics_extended.csv` (133 rows).
+
+**Plots:** `plot_climatology_comparisons.py` (six `clim_mean_*_1981_2014.png`); `plot_validation_period.py` with `DOR_PRODUCT_ROOT` → shared NPZ (validation side-by-side + TS).
+
+**LOCA2:** `load_loca2.py` — crop time/lat/lon **before** `pr×86400`; time-chunked interp (`DOR_LOCA2_TIME_CHUNK`, default 48) + float32 output to avoid multi‑GB allocations on full-historical loads.
+
+**Multi-product plots:** `plot_comparison_driver.py --all` completed (~31 min) — `output/figures/4km_plots/hist_1981_2014/`, `validation_2006_2014/`, `delta_future_minus_hist/`, and `index.html`.
+
+---
+
+## 2026-04-14 — Memory: memmap slicing + float32 stacks
+
+**Issue:** Scripts were materializing entire CMIP6 / GridMET memmap time axes as float64 (~4+ GB per stack) before date masking.
+
+**Changes:** [`load_obs.py`](scripts/load_obs.py) and [`climate_signal_io.load_cmip6_variable`](scripts/climate_signal_io.py) slice the memmap to the requested **day index range** first; stacks are **float32** where returned from these loaders. [`plot_climatology_comparisons._mean_s3_cmip6`](scripts/plot_climatology_comparisons.py) computes the time mean in **chunks** without allocating the full timeline. [`plot_comparison_driver.py`](scripts/plot_comparison_driver.py) calls `gc.collect()` after each variable.
+
+**If RAM is still tight:** run `plot_comparison_driver.py` with a subset, e.g. `--vars pr,tasmax`, or close other apps; multi-product alignment still holds several large arrays at once by design.
+
+---
+
+## 2026-04-13 — Local WRC_DOR cache on D: (memmaps + GridMET crop NPZ)
+
+Robocopied from `\\abe-cylo\modelsdev\Projects\WRC_DOR\` into **`D:\drops-resilience-data\WRC_DOR_cache\`** (same subpaths as the server): `Spatial_Downscaling/test8_v2/Regridded_Iowa/` (`gridmet_targets_*.dat`, `geo_mask.npy`), `MPI/mv_otbc/` (`cmip6_inputs_19810101-20141231.dat`, `cmip6_inputs_ssp585_20150101-21001231.dat` only — **not** the large `cmip6_inputs_18500101-19801231.dat`), and `Data/Cropped_Iowa/GridMET/Cropped_pr_2006.npz`.
+
+[`config.py`](config.py) prefers this tree when files exist (`DOR_LOCAL_WRC_CACHE` override, `DOR_CROPPED_GRIDMET_DIR` optional). Env vars `DOR_TEST8_*` still win when set.
+
+---
+
+## 2026-04-13 (later) — Plot driver + extended diagnostics table
+
+**`scripts/plot_comparison_driver.py`** — Parameterized figures under `output/figures/4km_plots/`: `hist_1981_2014/` (full overlap with GridMET targets), `validation_2006_2014/` (benchmark window), `delta_future_minus_hist/` (S3, DOR test8_v2/v3/v4, LOCA2, NEX), plus `index.html`. Independent 2–98% color scales per panel. CLI: `--hist`, `--val`, `--delta`, or `--all` (default runs all).
+
+**`scripts/benchmark_io.py`** — `load_multi_product_historical` / `load_multi_product_validation` align GridMET, optional S3 `cmip6_inputs`, DOR outputs for each `DOR_DEFAULT_OUTPUTS` pipeline, LOCA2 (where applicable), and NEX on a common calendar.
+
+**`scripts/extended_stage_diagnostics.py`** — Tidy long-form `stage_diagnostics_extended.csv`: pooled variance, P01/P99, WDF (pr), lag-1 and seasonal range on domain-mean series, KGE vs GridMET for S3/DOR/LOCA2/NEX where applicable.
+
+**S1/S2 coarse stacks:** Still deferred pending confirmed daily file layout under `Data/Cropped_Iowa/` (see earlier entry).
+
+---
+
+## 2026-04-13 — Climate signal, multi-pipeline benchmark, Bhuwan alignment
+
+**Normative examples:** New loaders and signal math were checked against [`scripts/Bhuwan/Compare_All_Signals_Iowa_Parallel.py`](scripts/Bhuwan/Compare_All_Signals_Iowa_Parallel.py) (domain signal: **pr** as relative % change, other vars as absolute Δ; 1981–2014 baseline vs 2015–2044 future slice) and [`scripts/Bhuwan/crop_loca2_iowa_MPI.py`](scripts/Bhuwan/crop_loca2_iowa_MPI.py) (LOCA2 **×86400** for pr, lon 0–360°, Iowa buffer + `xarray.interp` to GridMET lat/lon).
+
+**Config:** [`config.py`](config.py) adds `HIST_*`, `SIGNAL_*` windows, `CMIP6_HIST_DAT` / `CMIP6_FUTURE_DAT`, `NEX_FILE_PATTERN_SSP585`, `DOR_DEFAULT_OUTPUTS` for **test8_v2/v3/v4**, and figure roots `FIG_BY_*` / `FIG_4KM_PLOTS`.
+
+**Scripts:**
+- [`run_climate_signal_stages.py`](scripts/run_climate_signal_stages.py) → `output/climate_signal_by_stage.csv`, `climate_signal_preservation.csv` (S3↔S4 **r** / **RMSE** on Δ maps when DOR future NPZs exist). Use `--skip-dor` if only memmaps + externals.
+- [`batch_benchmark_pipelines.py`](scripts/batch_benchmark_pipelines.py) runs [`run_benchmark.py`](scripts/run_benchmark.py) three times with `DOR_PIPELINE_ID` + `DOR_PRODUCT_ROOT`; writes `benchmark_summary_<pipeline_id>.csv` and `kge_by_variable_<pipeline_id>.png`.
+- [`plot_climatology_comparisons.py`](scripts/plot_climatology_comparisons.py) → **1981–2014** climatological mean maps under `output/figures/4km_plots/` (independent 2–98% per panel).
+- [`extended_stage_diagnostics.py`](scripts/extended_stage_diagnostics.py) → `stage_diagnostics_extended.csv` (pooled variance on validation window).
+
+**Intentional deltas from older plotting:** [`plot_validation_period.py`](scripts/plot_validation_period.py) remains **validation-era** (2006–2014) for benchmark parity; climatological **full historical** means are **not** produced there — use `plot_climatology_comparisons.py` instead.
+
+**Pipeline prerequisite:** Full SSP future downscale requires `TEST8_MAIN_PERIOD_ONLY=0` and `cmip6_inputs_ssp585_20150101-21001231.dat` next to historical memmaps (see [`pipeline/scripts/_test8_sd_impl.py`](../../pipeline/scripts/_test8_sd_impl.py)).
+
+**Not implemented in code (deferred):** **S1_raw** / **S2_bc** coarse-grid loaders and coarse↔fine **Tier B** alignment — require a confirmed file layout under `Data/Cropped_Iowa/` / `100km-ScenarioMIP/` on `\\abe-cylo\...`. Set `DOR_SCENARIO_RAW_ROOT` / `DOR_CROPPED_BC_ROOT` in [`config.py`](config.py) when ready to add loaders.
+
+**Benchmark CSV rename:** Default single-run output is now `benchmark_summary_<pipeline_id>.csv` (inferred from `DOR_PRODUCT_ROOT` or `DOR_PIPELINE_ID`), not a fixed `benchmark_summary.csv`.
+
+---
+
 ## 2026-04-06 — Charter
 
 **Goal:** Benchmark the local PR-intensity **test8_v2** fork output (`PR_INTENSITY_BLEND=0.65`, `TEST8_SEED=42`) against **LOCA2** and **NEX-GDDP-CMIP6** (NASA) for **MPI-ESM1-2-HR**, using **GridMET targets** (same memmap as test8) as observations, on the **2006–2014** test window used in `V8_Table1_*` metrics.

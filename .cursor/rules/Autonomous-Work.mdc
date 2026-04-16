@@ -1,0 +1,12 @@
+---
+description: 
+alwaysApply: true
+---
+
+Unless otherwise specified, work autonomously (this includes not just writing code but running all scripts as well) until the plan is totally complete to the fullest degree possible, no mater what.
+
+DO NOT write the code and then ask the user to run the scripts.
+DO NOT ask for user help whenever presented with missing data - check C:\drops-of-resilience, my D: drive, and explore the server thoroughly. Get genuinely missing data by starting with data from an earlier point in the pipeline and generating.
+DO NOT check back in with the user after completing part of a plan - you may chunk a task into smaller, iterative pieces, but after completing a piece, move on to the next piece if at all possible. 
+
+Always assume your work is not done yet, and keep on working in the face of bugs and challenges.

@@ -1,4 +1,4 @@
-"""Load NEX-GDDP-CMIP6 yearly NetCDFs, concat, regrid to Iowa GridMET grid (yearly I/O)."""
+"""Load NEX-GDDP-CMIP6 yearly NetCDFs, concat, regrid to Iowa GridMET grid."""
 from __future__ import annotations
 
 import numpy as np
@@ -12,10 +12,23 @@ def load_nex_on_grid(
     var: str,
     lat_tgt: np.ndarray,
     lon_tgt: np.ndarray,
+    *,
+    scenario: str = "historical",
+    year_start: int = 2006,
+    year_end: int = 2014,
 ) -> tuple[np.ndarray, pd.DatetimeIndex]:
+    """
+    Default years 2006–2014 match original benchmark.
+    Use scenario='ssp585' and year range for future climate-signal windows.
+    """
     name = cfg.EXTERNAL_VAR[var]
     subdir = cfg.NEX_SUBDIR[var]
-    pattern = cfg.NEX_FILE_PATTERN[var]
+    if scenario == "historical":
+        pattern = cfg.NEX_FILE_PATTERN[var]
+    elif scenario == "ssp585":
+        pattern = cfg.NEX_FILE_PATTERN_SSP585[var]
+    else:
+        raise ValueError(f"Unknown NEX scenario: {scenario}")
 
     lon_360 = (np.asarray(lon_tgt, dtype=float) + 360.0) % 360.0
     lon_lo = float(lon_360.min()) - 0.5
@@ -25,8 +38,8 @@ def load_nex_on_grid(
 
     chunks = []
     times_list = []
-    for year in range(2006, 2015):
-        p = cfg.NEX_ROOT / cfg.GCM_FOLDER / "historical" / subdir / pattern.format(year=year)
+    for year in range(year_start, year_end + 1):
+        p = cfg.NEX_ROOT / cfg.GCM_FOLDER / scenario / subdir / pattern.format(year=year)
         if not p.is_file():
             raise FileNotFoundError(p)
         with xr.open_dataset(p) as ds:

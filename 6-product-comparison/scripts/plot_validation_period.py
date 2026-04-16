@@ -1,6 +1,12 @@
 """
-Validation-period plots: domain-mean time series (Obs vs DOR, LOCA2, NEX) and
+Validation-period plots (2006–2014): domain-mean time series (Obs vs DOR, LOCA2, NEX) and
 side-by-side maps (GridMET vs DOR): snapshot days, full-window mean, and seasonal means.
+
+For **multi-product** climatological (1981–2014) and validation (2006–2014) panels — domain-mean time
+series, time-mean and seasonal maps, snapshot days, and climate delta maps — use
+`plot_comparison_driver.py` (under `output/figures/4km_plots/`). This script can delegate validation
+panels to that driver with **`python plot_validation_period.py --via-comparison-driver`**. For a **single row** of
+1981–2014 climatological means only, use `plot_climatology_comparisons.py` (independent 2–98% per panel).
 
 Outputs:
   output/figures/validation_ts_<var>.png
@@ -10,7 +16,11 @@ Outputs:
 """
 from __future__ import annotations
 
+import io
+import os
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 PC_ROOT = Path(__file__).resolve().parents[1]
@@ -81,9 +91,35 @@ def _save_obs_dor_pair(
     fig.suptitle(suptitle, fontsize=11)
     fig.colorbar(im1, ax=axes, shrink=0.85, label=cfg.VAR_YLABEL.get(var, var))
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=150)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150)
     plt.close(fig)
-    print(f"Wrote {out_path}")
+    data = buf.getvalue()
+    fd, tmp = tempfile.mkstemp(suffix=".png", dir=str(out_path.parent))
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+    dest = str(out_path.resolve())
+    last_err: OSError | None = None
+    try:
+        for attempt in range(12):
+            try:
+                if out_path.is_file():
+                    os.remove(out_path)
+                os.replace(tmp, dest)
+                print(f"Wrote {out_path}")
+                return
+            except OSError as e:
+                last_err = e
+                time.sleep(0.12 * (attempt + 1))
+        raise last_err if last_err else OSError(f"failed to write {out_path}")
+    finally:
+        try:
+            if os.path.isfile(tmp):
+                os.remove(tmp)
+        except OSError:
+            pass
 
 
 def _season_masks(dates: pd.DatetimeIndex) -> list[tuple[str, np.ndarray]]:
@@ -118,13 +154,13 @@ def plot_domain_mean_timeseries(var: str, st) -> None:
     ax.plot(st.dates, dm["NEX"], label="NEX-GDDP", color="#fdae61", lw=0.8, alpha=0.85)
     ax.set_ylabel(cfg.VAR_YLABEL.get(var, var))
     ax.set_xlabel("Date")
-    ax.set_title(f"{var} — domain mean (MPI-ESM1-2-HR, validation 2006–2014)")
+    ax.set_title(f"{var} - domain mean (MPI-ESM1-2-HR, validation 2006-2014)")
     ax.legend(loc="upper right", fontsize=8)
     ax.grid(True, alpha=0.25)
     fig.autofmt_xdate()
     fig.tight_layout()
     p = cfg.FIG_DIR / f"validation_ts_{var}.png"
-    fig.savefig(p, dpi=150)
+    fig.savefig(str(p.resolve()), dpi=150)
     plt.close(fig)
     print(f"Wrote {p}")
 
@@ -147,7 +183,7 @@ def plot_obs_vs_dor_maps(var: str, st, day_str: str) -> None:
         var,
         f"GridMET (target)\n{day_str}",
         f"DOR blend 0.65\n{day_str}",
-        f"{var} — Iowa crop (216×192), shared color scale (2–98%)",
+        f"{var} - Iowa crop (216x192), shared color scale (2-98%)",
     )
 
 
@@ -160,9 +196,9 @@ def plot_obs_vs_dor_mean_maps(var: str, st) -> None:
         o,
         d,
         var,
-        "GridMET (target)\nmean 2006–2014",
-        "DOR blend 0.65\nmean 2006–2014",
-        f"{var} — time-mean fields, shared color scale (2–98%)",
+        "GridMET (target)\nmean 2006-2014",
+        "DOR blend 0.65\nmean 2006-2014",
+        f"{var} - time-mean fields, shared color scale (2-98%)",
     )
 
 
@@ -190,17 +226,23 @@ def plot_obs_vs_dor_seasonal_maps(var: str, st) -> None:
         fig.colorbar(im1, ax=[axes[i, 0], axes[i, 1]], shrink=0.72, label=cbar_label)
 
     fig.suptitle(
-        f"{var} — seasonal mean (2006–2014), per-row 2–98% on GridMET+DOR",
+        f"{var} - seasonal mean (2006-2014), per-row 2-98% on GridMET+DOR",
         fontsize=11,
     )
     p = cfg.FIG_VALIDATION_TIME_AGG / f"validation_agg_seasonal_{var}.png"
     p.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(p, dpi=150)
+    fig.savefig(str(p.resolve()), dpi=150)
     plt.close(fig)
     print(f"Wrote {p}")
 
 
 def main() -> int:
+    if "--via-comparison-driver" in sys.argv:
+        import plot_comparison_driver as pcd
+
+        sys.argv = [sys.argv[0], "--val", "--vars", ",".join(cfg.VARS)]
+        return pcd.main()
+
     cfg.FIG_DIR.mkdir(parents=True, exist_ok=True)
     cfg.FIG_VALIDATION_INDIVIDUAL_DAYS.mkdir(parents=True, exist_ok=True)
     cfg.FIG_VALIDATION_TIME_AGG.mkdir(parents=True, exist_ok=True)

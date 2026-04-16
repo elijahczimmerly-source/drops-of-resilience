@@ -14,9 +14,23 @@ Top-level work folders use numeric prefixes: `1-week1`, `2-validate-tas-converge
 | **What the product benchmark does *not* measure** | It compares **2006–2014 simulated vs GridMET** (KGE, RMSE, Ext99, etc.). It does **not** assess preservation of a **climate change signal** (e.g. future minus historical vs other products); that would require a separate analysis with SSP outputs. |
 | **LOCA2 vs NEX native grids** | Before interpolation to GridMET, archives are roughly **LOCA2 ~6 km** (≈1/16°) and **NEX-GDDP-CMIP6 0.25° × 0.25°** (~25–28 km at Iowa). See [`6-product-comparison/LITERATURE.md`](6-product-comparison/LITERATURE.md). The benchmark still evaluates everyone on the **same** Iowa 216×192 GridMET grid. |
 
+### Where data lives (repo, local drives, server)
+
+**All three are valid places to find or stage data**—use whichever matches how the machine is set up:
+
+| Location | Typical role |
+|----------|----------------|
+| **`C:\drops-of-resilience`** | Git repo: code, small outputs, task folders, `pipeline/output/` for runs, junctions to other trees. May point at memmaps via env vars or a **local cache path** (see below)—the repo itself usually does **not** hold multi‑GB `.dat` memmaps. |
+| **Local drives (e.g. `D:\`, or another volume)** | **Preferred for large inputs and outputs**: copy server `Regridded_Iowa` memmaps, GridMET crop NPZs, and pipeline write targets here when you need speed and stable I/O. Example cache layout: `D:\drops-resilience-data\WRC_DOR_cache\` mirroring UNC paths (see [`6-product-comparison/config.py`](6-product-comparison/config.py) `DOR_LOCAL_WRC_CACHE` and `6-product-comparison/WORKLOG.md`). |
+| **`\\abe-cylo\modelsdev\Projects\WRC_DOR\` (server)** | **Canonical source of truth** for project data: `Data/`, `Spatial_Downscaling/`, `Regridded_Iowa`, downscaled products, etc. Use when browsing, verifying paths, or **copying** files to a local machine. |
+
+**Pipeline runs (test8 / `_test8_sd_impl`, regrid jobs, anything reading multi‑GB memmaps for hours):** **Copy the required inputs from the server onto this machine first**, then point `DOR_TEST8_*` / `DOR_TEST8_PR_DATA_DIR` (and related env vars) at those **local** paths. Running entirely over UNC may work for spot checks but is slower, more sensitive to disconnects, and risks saturating the link—**local disk is the default expectation for full pipeline runs.**
+
+**Choosing a drive (C:, D:, or another volume):** Decide from **(1)** how directories are organized (e.g. dedicated `D:\…\WRC_DOR_cache\` vs repo-adjacent folders on `C:\`) and **(2)** **how much free space** is available **before** you start. Memmaps and full stochastic outputs are **tens of gigabytes per stack**; a single run can consume **many GB** of writes. **Check free space and leave comfortable headroom** so the job does not **run out of storage mid-run** (which corrupts or truncates outputs and wastes runtime). If one volume is tight, use another or free space first—**never assume** the default path will fit without checking.
+
 ### Server path verification (AI agents)
 
-The canonical UNC is `\\abe-cylo\modelsdev\Projects\WRC_DOR\`. Access requires **VPN / domain reachability** (and sometimes explicit credentials). On some machines, `\\abe-cylo` alone does not enumerate even when `\\abe-cylo\modelsdev\Projects\WRC_DOR\` works—**use the full path** in Explorer or scripts.
+The canonical UNC is `\\abe-cylo\modelsdev\Projects\WRC_DOR\`. It is the **authoritative archive**; for heavy local runs, copy from here to `C:\` or `D:\` as described in **Where data lives (repo, local drives, server)** above. Access requires **VPN / domain reachability** (and sometimes explicit credentials). On some machines, `\\abe-cylo` alone does not enumerate even when `\\abe-cylo\modelsdev\Projects\WRC_DOR\` works—**use the full path** in Explorer or scripts.
 
 **Spot-check (2026-04-11):** Top-level folders present: `Bias_Correction/`, `Data/`, `Spatial_Downscaling/`. Under `Data/`: `100km-ScenarioMIP/`, `Cropped_Colorado/`, `Cropped_Iowa/`, `Gridmet-CONUS/`, `Regridded_Iowa/` (with `MPI/mv_otbc/`). Under `Spatial_Downscaling/`: `Data_Regrided_Gridmet/`, `Data_WindEffect_Static/`, `Downscaled_Products/`, `Scripts/` (includes `test8.py`, `test8_v2.py`, `regrid_to_gridmet.py`, etc.), `test8_v2/` (`Iowa_Downscaled/`, `Regridded_Iowa/`). `Regridded_Iowa/` on server also contains `geo_static.npy` and `gridmet_targets_19810101-20141231.dat` at the top level (alongside `geo_mask.npy`, `Regridded_Elevation_4km.npz`, and `MPI/`). Matches the tree documented below; re-verify after major reorganizations.
 
@@ -46,6 +60,8 @@ This is a climate downscaling and bias correction research project. The goal is 
 ---
 
 ## Pipeline (Standard Workflow)
+
+**Inputs:** Before a long local run, **copy required memmaps and masks from the server** (or another source) onto the machine—see **Where data lives (repo, local drives, server)**—and pick a drive with **enough free space** so the run cannot exhaust disk mid-pipeline.
 
 ```
 1. Regrid observed GridMET (4km) → 100km GCM grid

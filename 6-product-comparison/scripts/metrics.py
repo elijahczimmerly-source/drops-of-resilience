@@ -7,7 +7,15 @@ import numpy as np
 
 
 def _spatial_bias(sim_3d: np.ndarray, obs_3d: np.ndarray) -> float:
-    diff = np.nanmean(sim_3d, axis=0) - np.nanmean(obs_3d, axis=0)
+    if sim_3d.size == 0 or obs_3d.size == 0:
+        return float("nan")
+    if not np.any(np.isfinite(obs_3d)) or not np.any(np.isfinite(sim_3d)):
+        return float("nan")
+    omean = np.nanmean(obs_3d, axis=0)
+    smean = np.nanmean(sim_3d, axis=0)
+    if not np.any(np.isfinite(omean)) and not np.any(np.isfinite(smean)):
+        return float("nan")
+    diff = smean - omean
     with np.errstate(invalid="ignore", divide="ignore"):
         v = np.nanmean(diff)
     return float(v) if np.isfinite(v) else float("nan")

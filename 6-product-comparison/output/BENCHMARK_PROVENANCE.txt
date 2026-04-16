@@ -1,0 +1,23 @@
+Distinct test8 products (what each benchmark row means)
+========================================================
+
+Each pipeline ID must come from its own folder under pipeline/output/ — not a shared copy.
+
+  test8_v2  → pipeline/output/test8_v2/parity/
+               Bhuwan-style parity (PR_USE_INTENSITY_RATIO=0). See INVOCATION.json + run_manifest.json.
+
+  test8_v3  → pipeline/output/test8_v3/experiment_blend0p65/
+               PR intensity, blend 0.65, default WDF factor 1.15 for v3.
+
+  test8_v4  → pipeline/output/test8_v4/experiment_blend0p65/
+               PR intensity, blend 0.65, default WDF factor 1.65 for v4.
+
+Generate outputs (slow; SSP future needs TEST8_MAIN_PERIOD_ONLY=0):
+  python pipeline/scripts/run_three_distinct_outputs.py
+
+After runs, snapshot manifests into this tree:
+  python 6-product-comparison/scripts/collect_benchmark_provenance.py
+  → output/benchmark_bundle/<pipeline_id>/
+
+Legacy single-folder mirror (not a three-way product test):
+  set DOR_ALLOW_SHARED_BENCHMARK_MIRROR=1 and DOR_BENCHMARK_SHARED_NPZ_ROOT=<path>

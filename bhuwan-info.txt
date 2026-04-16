@@ -589,4 +589,73 @@ and thank you
  
 Will do, you're welcome
  
+Can we meet soon?
+ 
+Online or?
+ 
+Yes
+ 
+How soon?
+ 
+I'm available rn
+ 
+Oh, right now works actually. Just give me a second to move stuff to my laptop and go to the other room
+ 
+Likewise 
+ 
+you can call whenever you’re ready
+ 
+ 
+i will upload the new bias corrected outputs, loca2 comparison scripts tomorrow
+ 
+Got it, thank you
+ 
+crop_loca2_iowa_MPI.py
+Compare_All_Signals_Iowa_Parallel.py
+ 
+\\abe-cylo\modelsdev\Projects\WRC_DOR\Bias_Correction\Data new datasets ahev been uploaded
+ 
+What is Antigravity V8
+ 
+Haha the plotting was written by ai antigravity ide
+ 
+And v8 is my script 
+ 
+That's why
+ 
+I figured, just checking
+ 
+Do I have v8?
+ 
+Is that the same as test8 or test8_v8?
+ 
+It's teat8_v2
+ 
+ok
+ 
+I'll upload test8 if you don't have but the plots are from v2
+ 
+I do have it
+ 
+it's all good
+ 
+How does the color scaling work on your plots? For example, with tasmin is the bias at most 1 K or could the darkest spots be greater than that
+ 
+The darkest might be slightly higher than 1
+ 
+Is a bias of 1K bad?
+ 
+I think it's fine. Since loca2 also has it's bias
+ 
+Mean bias isn't the sole metric to look for. We need to look at other metrics too
+ 
+You said you saw something bad in the plots, what is it?
+ 
+I was wrong. I thought these plots were mean actual value plots not bias
+ 
+So i thought the spatial structure isn't matching 
+ 
+ok
+
+
  

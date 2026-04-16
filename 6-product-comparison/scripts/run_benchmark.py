@@ -1,8 +1,10 @@
 """
 Compare DOR (blend0.65), LOCA2, and NEX-GDDP vs GridMET on 2006–2014.
+Set DOR_PIPELINE_ID when batching (e.g. test8_v2); else inferred from DOR_PRODUCT_ROOT.
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -18,6 +20,19 @@ import pandas as pd
 import config as cfg
 from benchmark_io import LOCA_VARS, load_aligned_stacks
 from metrics import calculate_pooled_metrics
+
+
+def _pipeline_id_for_run() -> str:
+    e = os.environ.get("DOR_PIPELINE_ID", "").strip()
+    if e:
+        return e
+    parts = cfg.DOR_PRODUCT_DIR.resolve().parts
+    if "output" in parts:
+        i = parts.index("output")
+        if i + 1 < len(parts):
+            return parts[i + 1]
+    return "unknown"
+
 
 _METRIC_KEYS = [
     "KGE",
@@ -47,11 +62,13 @@ def run() -> pd.DataFrame:
 
     summary_rows = []
 
+    pipeline_id = _pipeline_id_for_run()
+
     for var in cfg.VARS:
         st = load_aligned_stacks(var)
         obs_a, dor_a = st.obs, st.dor
 
-        row: dict = {"variable": var}
+        row: dict = {"pipeline_id": pipeline_id, "variable": var}
         row.update(
             _flatten_metrics("DOR", calculate_pooled_metrics(obs_a, dor_a, var, label="Val"), var)
         )
@@ -73,16 +90,16 @@ def run() -> pd.DataFrame:
         summary_rows.append(row)
 
     df = pd.DataFrame(summary_rows)
-    out_csv = cfg.OUTPUT_DIR / "benchmark_summary.csv"
+    out_csv = cfg.OUTPUT_DIR / f"benchmark_summary_{pipeline_id}.csv"
     df.to_csv(out_csv, index=False)
     print(df.to_string(index=False))
     print(f"\nWrote {out_csv}")
 
-    _figures(df)
+    _figures(df, pipeline_id)
     return df
 
 
-def _figures(df: pd.DataFrame) -> None:
+def _figures(df: pd.DataFrame, pipeline_id: str) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
@@ -105,7 +122,7 @@ def _figures(df: pd.DataFrame) -> None:
     ax.legend()
     ax.axhline(0, color="k", linewidth=0.5)
     fig.tight_layout()
-    p = cfg.FIG_DIR / "kge_by_variable.png"
+    p = cfg.FIG_DIR / f"kge_by_variable_{pipeline_id}.png"
     fig.savefig(p, dpi=150)
     plt.close(fig)
     print(f"Wrote {p}")
@@ -125,7 +142,7 @@ def _figures(df: pd.DataFrame) -> None:
         ax.set_ylabel("Ext99 bias % (pr)")
         ax.set_title("Precipitation 99th percentile bias vs GridMET")
         fig.tight_layout()
-        p2 = cfg.FIG_DIR / "pr_ext99_bias.png"
+        p2 = cfg.FIG_DIR / f"pr_ext99_bias_{pipeline_id}.png"
         fig.savefig(p2, dpi=150)
         plt.close(fig)
         print(f"Wrote {p2}")
