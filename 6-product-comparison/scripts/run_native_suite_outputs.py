@@ -8,7 +8,7 @@ from pathlib import Path
 
 PC_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = PC_ROOT / "scripts"
-SUITES = ("gridmet_4km", "loca2_native", "nex_native")
+SUITES = ("dor_native", "loca2_native", "nex_native")
 
 
 def _run(args: list[str]) -> None:
@@ -28,7 +28,7 @@ def main() -> int:
         _run(["plot_climatology_comparisons.py", "--suite", s])
     for s in SUITES:
         _run(["plot_validation_period.py", "--suite", s])
-    _run(["diagnose_nex_rsds.py", "--suite", "gridmet_4km"])
+    _run(["diagnose_nex_rsds.py", "--suite", "dor_native"])
     _run(["diagnose_nex_rsds.py", "--suite", "nex_native"])
     for s in SUITES:
         _run(["pr_texture_investigation.py", "--suite", s])

@@ -11,7 +11,7 @@ Optional legacy: set DOR_BENCHMARK_SHARED_NPZ_ROOT and DOR_ALLOW_SHARED_BENCHMAR
 (same NPZs for all pipeline IDs — not a true three-way comparison).
 
 Environment:
-  DOR_E2E_SUITES — comma-separated list (default: gridmet_4km,loca2_native,nex_native).
+  DOR_E2E_SUITES — comma-separated list (default: dor_native,loca2_native,nex_native).
   Steps that are suite-specific set DOR_BENCHMARK_SUITE / `--suite` per iteration.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ PC_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = PC_ROOT / "scripts"
 REPO_ROOT = PC_ROOT.parent
 
-DEFAULT_SUITES = ("gridmet_4km", "loca2_native", "nex_native")
+DEFAULT_SUITES = ("dor_native", "loca2_native", "nex_native")
 
 
 def _require_distinct_dor() -> bool:
@@ -130,7 +130,7 @@ def main() -> int:
         if rc != 0:
             code = rc
 
-    for suite in ("gridmet_4km", "nex_native"):
+    for suite in ("dor_native", "nex_native"):
         if suite not in suites:
             continue
         rc = _run(

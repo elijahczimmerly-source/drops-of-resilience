@@ -4,7 +4,7 @@ maps (GridMET, S3 cmip6_inputs, DOR test8_v2/v3/v4, LOCA2, NEX), domain-mean tim
 climate-change Δ maps (future − historical). Independent 2–98% color scales per panel when
 amplitudes differ (see 7-fix-pr-splotchiness/PLOTTING.md).
 
-Outputs (under config.FIG_4KM_PLOTS):
+Outputs (under each suite's `figures/` — config.FIG_4KM_PLOTS for dor_native):
   hist_1981_2014/   — time-mean, seasonal, snapshots, domain-mean TS
   validation_2006_2014/ — same figure families for benchmark window
   For pr only: under each of the above, pr/ holds domain-mean TS + timemean; pr/seasonal/ and pr/snapshot/.
@@ -268,7 +268,7 @@ def run_val_plots(var: str, suite: str, fig_val: Path) -> None:
 
 
 def _delta_panels_dispatch(var: str, suite: str) -> list[tuple[str, np.ndarray]]:
-    if suite == gs.SUITE_GRIDMET_4KM:
+    if gs.is_dor_native_suite(suite):
         return _delta_panels_gridmet(var)
     return _delta_panels_native(var, suite)
 
@@ -492,7 +492,7 @@ def main() -> int:
     p.add_argument("--vars", default=",".join(cfg.VARS), help="Comma-separated variables")
     p.add_argument(
         "--suite",
-        default=gs.SUITE_GRIDMET_4KM,
+        default=gs.SUITE_DOR_NATIVE,
         help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
     )
     p.add_argument("--hist", action="store_true", help="1981-2014 figure family")

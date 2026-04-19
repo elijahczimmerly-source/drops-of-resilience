@@ -2,10 +2,10 @@
 Climatological mean maps (1981–2014): GridMET, S3 memmap, DOR (v2/v3/v4 only), LOCA2, NEX.
 Uses independent 2–98% color scales per panel (see 7-fix-pr-splotchiness/PLOTTING.md).
 
-Writes `clim_mean_{var}_1981_2014.png` under the suite plot root (`FIG_4KM_PLOTS` for gridmet_4km,
-else `output/suites/<suite>/figures/plots/`). Rerun after DOR output / config changes.
+Writes `clim_mean_{var}_1981_2014.png` under each suite's `figures/` (same root as the multi-panel driver).
+Rerun after DOR output / config changes.
 
-Use `--suite gridmet_4km|loca2_native|nex_native` (or set DOR_BENCHMARK_SUITE).
+Use `--suite dor_native|gridmet_4km|loca2_native|nex_native` (or set DOR_BENCHMARK_SUITE).
 """
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Climatological mean maps per benchmark suite")
     ap.add_argument(
         "--suite",
-        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_GRIDMET_4KM),
+        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_DOR_NATIVE),
         help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
     )
     args = ap.parse_args()

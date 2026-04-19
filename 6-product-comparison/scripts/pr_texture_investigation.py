@@ -3,7 +3,7 @@ PR texture diagnostics: LOCA2 vs DOR vs GridMET on historical time-mean and seas
 
 Reads aligned stacks via benchmark_io.load_multi_product_historical('pr').
 Writes CSV + optional JSON summary to 9-fix-pr-splotchiness-attempt-2/ at repo root by default
-(env DOR_PR_SPLOTCH_WORKDIR overrides). Filenames gain `_<suite>` when suite is not gridmet_4km.
+(env DOR_PR_SPLOTCH_WORKDIR overrides). Filenames gain `_<suite>` when suite is not dor_native.
 
 Run from repo:  python 6-product-comparison/scripts/pr_texture_investigation.py
 Or:  cd 6-product-comparison && python scripts/pr_texture_investigation.py --suite nex_native
@@ -101,7 +101,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="PR texture metrics vs GridMET")
     ap.add_argument(
         "--suite",
-        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_GRIDMET_4KM),
+        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_DOR_NATIVE),
         help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
     )
     args = ap.parse_args()
@@ -110,7 +110,7 @@ def main() -> int:
         print(f"Invalid suite {suite!r}; expected one of {sorted(gs.VALID_SUITES)}")
         return 1
     os.environ["DOR_BENCHMARK_SUITE"] = suite
-    suf = "" if suite == gs.SUITE_GRIDMET_4KM else f"_{suite}"
+    suf = "" if gs.is_dor_native_suite(suite) else f"_{suite}"
 
     warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
     DOCS_OUT.mkdir(parents=True, exist_ok=True)

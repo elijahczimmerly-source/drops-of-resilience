@@ -14,21 +14,21 @@ Self-contained benchmark: compare **your** stochastic downscaled output (**test8
 ```powershell
 conda activate drops-of-resilience
 cd c:\drops-of-resilience
-python product-comparison\scripts\verify_blend_choice.py
-python product-comparison\scripts\run_benchmark.py
-python product-comparison\scripts\plot_validation_period.py
-python product-comparison\scripts\diagnose_nex_rsds.py
+python 6-product-comparison\scripts\verify_blend_choice.py
+python 6-product-comparison\scripts\run_benchmark.py
+python 6-product-comparison\scripts\plot_validation_period.py
+python 6-product-comparison\scripts\diagnose_nex_rsds.py
 ```
 
-`plot_validation_period.py` writes **validation-period figures** (same 2006–2014 alignment as `run_benchmark.py`): one **domain-mean daily time series** per variable (`GridMET`, **DOR blend 0.65**, **LOCA2** where available — `pr` / `tasmax` / `tasmin` only — and **NEX**), plus **side-by-side maps** (GridMET | DOR): **snapshot days** under `output/figures/dor side-by-side/individual days/`, **time-mean** and **seasonal-mean** (DJF/MAM/JJA/SON) maps under `output/figures/dor side-by-side/time aggregated/`. Snapshot dates come from `config.VALIDATION_MAP_DATES_FIXED` plus the day of **maximum domain-mean observed `pr`**. First run can be slow over UNC (same I/O profile as the benchmark).
+`plot_validation_period.py` writes **validation-period figures** (same 2006–2014 alignment as `run_benchmark.py`): one **domain-mean daily time series** per variable (`GridMET`, **DOR blend 0.65**, **LOCA2** where available — `pr` / `tasmax` / `tasmin` only — and **NEX**), plus **side-by-side maps** (GridMET | DOR): **snapshot days** under `dor_native/validation_obs_vs_dor/individual days/`, **time-mean** and **seasonal-mean** (DJF/MAM/JJA/SON) maps under `dor_native/validation_obs_vs_dor/time aggregated/`. Snapshot dates come from `config.VALIDATION_MAP_DATES_FIXED` plus the day of **maximum domain-mean observed `pr`**. First run can be slow over UNC (same I/O profile as the benchmark).
 
 `diagnose_nex_rsds.py` breaks down the large **NEX vs GridMET `rsds` mean bias** (native vs target grid, monthly, cloudiness regimes, metadata). See `WORKLOG.md` § “NEX rsds mean bias pinned down”.
 
-Outputs:
+Outputs (default suite `dor_native` — see [`SUITES.md`](SUITES.md)):
 
-- `output/benchmark_summary.csv` — wide table per variable × product.
-- `output/figures/` — bar charts for key metrics; `validation_ts_<var>.png` at the `figures/` root from `plot_validation_period.py`; `dor side-by-side/individual days/validation_maps_<var>_<YYYYMMDD>.png` and `dor side-by-side/time aggregated/validation_agg_mean_<var>.png`, `validation_agg_seasonal_<var>.png`.
-- After `diagnose_nex_rsds.py`: `output/nex_rsds_*.csv`, `nex_rsds_metadata.txt`, `nex_rsds_bias_native_vs_targetgrid.json`, and `figures/nex_rsds_*.png`.
+- `dor_native/benchmark_summary*.csv` — wide table per variable × product.
+- `dor_native/benchmark_figures/` — bar charts for key metrics from `run_benchmark.py`; `dor_native/validation_obs_vs_dor/validation_ts_<var>.png`, `validation_obs_vs_dor/individual days/validation_maps_<var>_<YYYYMMDD>.png`, `validation_obs_vs_dor/time aggregated/validation_agg_mean_<var>.png`, `validation_agg_seasonal_<var>.png` from `plot_validation_period.py`.
+- After `diagnose_nex_rsds.py`: `nex_rsds_*.csv`, `nex_rsds_metadata.txt`, `nex_rsds_bias_native_vs_targetgrid.json` at the suite root, and PNGs under `nex_rsds_diagnostic/`.
 
 ## Interpretation
 
@@ -36,7 +36,7 @@ This is **product vs product** validation against a **common observational refer
 
 ## Native-resolution suites (LOCA2 / NEX grids)
 
-Parallel benchmarks and figures for evaluation on **LOCA2** and **NEX** native grids use `DOR_BENCHMARK_SUITE=gridmet_4km|loca2_native|nex_native` (default `gridmet_4km`). Outputs for non-legacy suites live under [`output/suites/`](output/suites/README.md). End-to-end orchestration: [`scripts/run_e2e_suite.py`](scripts/run_e2e_suite.py) (env `DOR_E2E_SUITES`). Details: [`WORKLOG_NATIVE_RESOLUTION.md`](WORKLOG_NATIVE_RESOLUTION.md).
+Parallel benchmarks and figures use `DOR_BENCHMARK_SUITE=dor_native|gridmet_4km|loca2_native|nex_native` (default `dor_native`; `gridmet_4km` is a deprecated alias for `dor_native`). Each suite has its own root folder next to this README — see [`SUITES.md`](SUITES.md). End-to-end orchestration: [`scripts/run_e2e_suite.py`](scripts/run_e2e_suite.py) (env `DOR_E2E_SUITES`). Details: [`WORKLOG_NATIVE_RESOLUTION.md`](WORKLOG_NATIVE_RESOLUTION.md).
 
 ## Config
 
@@ -45,4 +45,4 @@ Paths and bounds live in [`config.py`](config.py). Override with environment var
 - `DOR_PRODUCT_ROOT` — folder containing `Stochastic_V8_Hybrid_*.npz` (default: blend 0.65 output dir).
 - `WRC_DOR_SERVER` — UNC root for `Spatial_Downscaling` / `Data`.
 - `VALIDATION_MAP_DATES_FIXED` — calendar strings used for snapshot maps (winter / spring / summer / fall); the script appends one high–domain-mean-`pr` day from GridMET automatically.
-- `FIG_VALIDATION_INDIVIDUAL_DAYS` / `FIG_VALIDATION_TIME_AGG` — output folders for snapshot vs aggregated side-by-side maps (see `config.py`).
+- `FIG_VALIDATION_ROOT` / `FIG_VALIDATION_INDIVIDUAL_DAYS` / `FIG_VALIDATION_TIME_AGG` — default paths under `dor_native/validation_obs_vs_dor/` for snapshot vs aggregated side-by-side maps (see `config.py`).

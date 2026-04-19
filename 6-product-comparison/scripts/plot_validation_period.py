@@ -4,15 +4,15 @@ side-by-side maps (GridMET vs DOR): snapshot days, full-window mean, and seasona
 
 For **multi-product** climatological (1981–2014) and validation (2006–2014) panels — domain-mean time
 series, time-mean and seasonal maps, snapshot days, and climate delta maps — use
-`plot_comparison_driver.py` (under `output/figures/4km_plots/`). This script can delegate validation
+`plot_comparison_driver.py` (under each suite's `figures/`). This script can delegate validation
 panels to that driver with **`python plot_validation_period.py --via-comparison-driver`**. For a **single row** of
 1981–2014 climatological means only, use `plot_climatology_comparisons.py` (independent 2–98% per panel).
 
-Outputs (gridmet_4km; native suites mirror under output/suites/<suite>/figures/):
-  figures/validation_ts_<var>.png
-  figures/dor side-by-side/individual days/validation_maps_<var>_<YYYYMMDD>.png
-  figures/dor side-by-side/time aggregated/validation_agg_mean_<var>.png
-  figures/dor side-by-side/time aggregated/validation_agg_seasonal_<var>.png
+Outputs (under `<suite_root>/validation_obs_vs_dor/`):
+  validation_ts_<var>.png
+  individual days/validation_maps_<var>_<YYYYMMDD>.png
+  time aggregated/validation_agg_mean_<var>.png
+  time aggregated/validation_agg_seasonal_<var>.png
 
 Use `--suite` or DOR_BENCHMARK_SUITE. For full multi-product validation panels see
 `plot_comparison_driver.py --val`.
@@ -149,9 +149,9 @@ def _domain_means(st) -> dict[str, np.ndarray]:
 
 
 def _fig_paths(suite: str):
-    base = gs.suite_fig_dir(suite)
-    ind = base / "dor side-by-side" / "individual days"
-    agg = base / "dor side-by-side" / "time aggregated"
+    base = gs.suite_output_dir(suite) / "validation_obs_vs_dor"
+    ind = base / "individual days"
+    agg = base / "time aggregated"
     return base, ind, agg
 
 
@@ -252,7 +252,7 @@ def main() -> int:
     if "--via-comparison-driver" in sys.argv:
         import plot_comparison_driver as pcd
 
-        suite = gs.SUITE_GRIDMET_4KM
+        suite = gs.SUITE_DOR_NATIVE
         if "--suite" in sys.argv:
             i = sys.argv.index("--suite")
             if i + 1 < len(sys.argv):
@@ -264,7 +264,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Validation-era GridMET vs DOR side-by-side maps")
     ap.add_argument(
         "--suite",
-        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_GRIDMET_4KM),
+        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_DOR_NATIVE),
         help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
     )
     args, _unknown = ap.parse_known_args()

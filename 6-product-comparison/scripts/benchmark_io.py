@@ -14,7 +14,13 @@ import pandas as pd
 import config as cfg
 from align import align_to_obs_with_dates
 from climate_signal_io import load_cmip6_variable
-from grid_suites import SUITE_GRIDMET_4KM, SUITE_LOCA2_NATIVE, SUITE_NEX_NATIVE, benchmark_suite
+from grid_suites import (
+    SUITE_DOR_NATIVE,
+    SUITE_LOCA2_NATIVE,
+    SUITE_NEX_NATIVE,
+    benchmark_suite,
+    normalize_suite,
+)
 from grid_target import load_target_grid
 from interp_from_gridmet_stack import (
     interp_curvilinear_stack_to_target,
@@ -72,8 +78,8 @@ class MultiProductStacks:
 
 
 def load_aligned_stacks(var: str, suite: str | None = None) -> AlignedStacks:
-    s = suite if suite is not None else benchmark_suite()
-    if s == SUITE_GRIDMET_4KM:
+    s = normalize_suite(suite if suite is not None else benchmark_suite())
+    if s == SUITE_DOR_NATIVE:
         return _load_aligned_stacks_gridmet_4km(var)
     if s == SUITE_LOCA2_NATIVE:
         return _load_aligned_stacks_loca2_native(var)
@@ -261,8 +267,8 @@ def load_multi_product_validation(
     var: str, suite: str | None = None
 ) -> MultiProductStacks:
     """2006–2014: GridMET, S3 cmip6_inputs, DOR for each default pipeline, LOCA2, NEX."""
-    s = suite if suite is not None else benchmark_suite()
-    if s == SUITE_GRIDMET_4KM:
+    s = normalize_suite(suite if suite is not None else benchmark_suite())
+    if s == SUITE_DOR_NATIVE:
         return _load_multi_product_validation_gridmet(var)
     if s == SUITE_LOCA2_NATIVE:
         return _load_multi_product_validation_loca2_native(var)
@@ -489,8 +495,8 @@ def load_multi_product_historical(
     var: str, suite: str | None = None
 ) -> MultiProductStacks:
     """1981–2014: GridMET, S3, DOR per default pipeline, LOCA2, NEX (inner-join calendars)."""
-    s = suite if suite is not None else benchmark_suite()
-    if s == SUITE_GRIDMET_4KM:
+    s = normalize_suite(suite if suite is not None else benchmark_suite())
+    if s == SUITE_DOR_NATIVE:
         return _load_multi_product_historical_gridmet(var)
     if s == SUITE_LOCA2_NATIVE:
         return _load_multi_product_historical_loca2_native(var)

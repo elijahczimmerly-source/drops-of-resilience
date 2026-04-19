@@ -12,7 +12,7 @@ SCRIPTS = PC_ROOT / "scripts"
 sys.path.insert(0, str(PC_ROOT))
 import config as cfg
 
-_DEFAULT_SUITES = ("gridmet_4km", "loca2_native", "nex_native")
+_DEFAULT_SUITES = ("dor_native", "loca2_native", "nex_native")
 
 
 def _runs() -> list[tuple[str, Path]]:

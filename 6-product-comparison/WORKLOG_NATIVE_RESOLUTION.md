@@ -1,6 +1,11 @@
 # Native-resolution product benchmark — work log
 
-Append-only notes for the parallel **LOCA2 native** / **NEX native** benchmark trees (`output/suites/`), keyed off `DOR_BENCHMARK_SUITE` and `scripts/grid_suites.py`.
+Append-only notes for the parallel **LOCA2 native** / **NEX native** benchmark trees, keyed off `DOR_BENCHMARK_SUITE` and `scripts/grid_suites.py`.
+
+## 2026-04-19 (layout migration)
+
+- **Suite roots** moved to parallel directories under `6-product-comparison/`: `dor_native/` (GridMET-target suite; was flat `output/`), `loca2_native/`, `nex_native/` (were `output/suites/...`). Multi-panel figure trees are **flat** under each suite’s `figures/` (no `figures/plots/` or `4km_plots/`). Canonical suite id for the GridMET mesh is **`dor_native`**; env **`gridmet_4km`** remains accepted as an alias.
+- **Secondary PNG outputs** relocated: `run_benchmark.py` → `benchmark_figures/`; `plot_validation_period.py` → `validation_obs_vs_dor/`; `diagnose_nex_rsds.py` → `nex_rsds_diagnostic/`. See `SUITES.md` and updated `config.py` / `grid_suites.py`.
 
 ## 2026-04-18
 

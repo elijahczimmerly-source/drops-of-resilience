@@ -41,8 +41,8 @@ def main() -> int:
     (out / "bundle_index.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
 
-    for suite in sorted(gs.VALID_SUITES):
-        if suite == gs.SUITE_GRIDMET_4KM:
+    for suite in sorted(gs.CANONICAL_SUITES):
+        if suite == gs.SUITE_DOR_NATIVE:
             continue
         dest_parent = gs.suite_output_dir(suite)
         dest_parent.mkdir(parents=True, exist_ok=True)

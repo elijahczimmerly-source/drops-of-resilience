@@ -198,17 +198,25 @@ NEX_FILE_PATTERN_SSP585 = {
     "huss": "huss_day_MPI-ESM1-2-HR_ssp585_{year}_gn.nc",
 }
 
-OUTPUT_DIR = PC_ROOT / "output"
-FIG_DIR = OUTPUT_DIR / "figures"
+# Parallel suite roots (GridMET-target DOR suite + native-grid suites)
+DOR_NATIVE_ROOT = PC_ROOT / "dor_native"
+LOCA2_NATIVE_ROOT = PC_ROOT / "loca2_native"
+NEX_NATIVE_ROOT = PC_ROOT / "nex_native"
+
+# Legacy alias: primary benchmark artifacts for the GridMET mesh live under dor_native/
+OUTPUT_DIR = DOR_NATIVE_ROOT
+FIG_DIR = DOR_NATIVE_ROOT / "figures"
 
 # Validation side-by-side maps (GridMET | DOR) — see plot_validation_period.py
-FIG_VALIDATION_INDIVIDUAL_DAYS = FIG_DIR / "dor side-by-side" / "individual days"
-FIG_VALIDATION_TIME_AGG = FIG_DIR / "dor side-by-side" / "time aggregated"
+FIG_VALIDATION_ROOT = DOR_NATIVE_ROOT / "validation_obs_vs_dor"
+FIG_VALIDATION_INDIVIDUAL_DAYS = FIG_VALIDATION_ROOT / "individual days"
+FIG_VALIDATION_TIME_AGG = FIG_VALIDATION_ROOT / "time aggregated"
 
 # Extended figure tree (multi-product / multi-pipeline)
 FIG_BY_STAGE = FIG_DIR / "by_stage"
 FIG_BY_PIPELINE = FIG_DIR / "by_pipeline"
-FIG_4KM_PLOTS = FIG_DIR / "4km_plots"
+# Multi-panel gallery (hist / validation / delta) — directly under figures/ (no 4km_plots segment)
+FIG_4KM_PLOTS = FIG_DIR
 
 # Calendar dates for validation_maps_* (side-by-side obs vs DOR); high-pr day added at runtime from obs.
 VALIDATION_MAP_DATES_FIXED = (

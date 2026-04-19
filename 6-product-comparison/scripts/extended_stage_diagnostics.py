@@ -82,7 +82,7 @@ def _cv(a: np.ndarray) -> float:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Extended validation-window diagnostics per product")
-    ap.add_argument("--suite", default=gs.SUITE_GRIDMET_4KM, help="DOR_BENCHMARK_SUITE")
+    ap.add_argument("--suite", default=gs.SUITE_DOR_NATIVE, help="DOR_BENCHMARK_SUITE")
     args = ap.parse_args()
     os.environ["DOR_BENCHMARK_SUITE"] = str(args.suite).strip()
     suite = gs.benchmark_suite()
@@ -219,7 +219,7 @@ def main() -> int:
             add_row("NEX", "", "pooled_variance", float("nan"), st.missing.get("nex", "missing"))
 
     df = pd.DataFrame(rows)
-    suf = "" if suite == gs.SUITE_GRIDMET_4KM else f"_{suite}"
+    suf = "" if gs.is_dor_native_suite(suite) else f"_{suite}"
     out = out_root / f"stage_diagnostics_extended{suf}.csv"
     df.to_csv(out, index=False)
     print(df.head(40).to_string(index=False))

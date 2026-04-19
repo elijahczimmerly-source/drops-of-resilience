@@ -1,7 +1,7 @@
 """
 Compare DOR (blend0.65), LOCA2, and NEX-GDDP vs GridMET on 2006–2014.
 Set DOR_PIPELINE_ID when batching (e.g. test8_v2); else inferred from DOR_PRODUCT_ROOT.
-Set DOR_BENCHMARK_SUITE=gridmet_4km|loca2_native|nex_native (default gridmet_4km).
+Set DOR_BENCHMARK_SUITE=dor_native|gridmet_4km|loca2_native|nex_native (default dor_native).
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def _flatten_metrics(prefix: str, m: dict, var: str) -> dict:
 def run() -> pd.DataFrame:
     suite = gs.benchmark_suite()
     out_dir = gs.suite_output_dir(suite)
-    fig_dir = gs.suite_fig_dir(suite)
+    fig_dir = out_dir / "benchmark_figures"
     out_dir.mkdir(parents=True, exist_ok=True)
     fig_dir.mkdir(parents=True, exist_ok=True)
 
@@ -103,7 +103,7 @@ def run() -> pd.DataFrame:
         summary_rows.append(row)
 
     df = pd.DataFrame(summary_rows)
-    suf = "" if suite == gs.SUITE_GRIDMET_4KM else f"_{suite}"
+    suf = "" if gs.is_dor_native_suite(suite) else f"_{suite}"
     out_csv = out_dir / f"benchmark_summary_{pipeline_id}{suf}.csv"
     df.to_csv(out_csv, index=False)
     print(df.to_string(index=False))
@@ -140,7 +140,7 @@ def _figures(df: pd.DataFrame, pipeline_id: str, fig_dir: Path, suite: str) -> N
     ax.legend()
     ax.axhline(0, color="k", linewidth=0.5)
     fig.tight_layout()
-    suf = "" if suite == gs.SUITE_GRIDMET_4KM else f"_{suite}"
+    suf = "" if gs.is_dor_native_suite(suite) else f"_{suite}"
     p = fig_dir / f"kge_by_variable_{pipeline_id}{suf}.png"
     fig.savefig(p, dpi=150)
     plt.close(fig)

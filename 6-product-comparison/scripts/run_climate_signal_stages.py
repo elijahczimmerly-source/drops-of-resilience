@@ -103,7 +103,7 @@ def run_signal_analysis(
         )
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-    suite = suite if suite is not None else gs.benchmark_suite()
+    suite = gs.normalize_suite(suite if suite is not None else gs.benchmark_suite())
     pipeline_ids = ["test8_v2", "test8_v3", "test8_v4"]
     lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
     if cfg.GEO_MASK.is_file():
@@ -113,7 +113,7 @@ def run_signal_analysis(
         mask_gridmet = np.ones((cfg.H, cfg.W), dtype=np.float32)
 
     eval_LAT = eval_LON = None
-    if suite == gs.SUITE_GRIDMET_4KM:
+    if gs.is_dor_native_suite(suite):
         mask_2d = mask_gridmet >= 0.5
     elif suite == gs.SUITE_LOCA2_NATIVE:
         eval_LAT, eval_LON = get_loca_validation_mesh(lat_tgt, lon_tgt)
@@ -181,7 +181,7 @@ def run_signal_analysis(
 
         s3_hist, _ = load_cmip6_variable(cfg.CMIP6_HIST_DAT, var, hist_s, hist_e)
         s3_fut, _ = load_cmip6_variable(cfg.CMIP6_FUTURE_DAT, var, fut_s, fut_e)
-        if suite == gs.SUITE_GRIDMET_4KM:
+        if gs.is_dor_native_suite(suite):
             _, ds3 = spatial_delta_maps(s3_hist, s3_fut, var)
             all_rows.append(signal_row("S3_regrid", "cmip6_inputs", var, s3_hist, s3_fut, mask_2d, None))
         else:
@@ -191,7 +191,7 @@ def run_signal_analysis(
             _, ds3 = spatial_delta_maps(s3_hi, s3_fi, var)
             all_rows.append(signal_row("S3_regrid", "cmip6_inputs", var, s3_hi, s3_fi, mask_2d, None))
 
-        if suite == gs.SUITE_GRIDMET_4KM and s2_pair is not None:
+        if gs.is_dor_native_suite(suite) and s2_pair is not None:
             h2, f2 = s2_pair
             _, d_s2 = spatial_delta_maps(h2, f2, var)
             try:
@@ -221,7 +221,7 @@ def run_signal_analysis(
                     }
                 )
 
-        if suite == gs.SUITE_GRIDMET_4KM:
+        if gs.is_dor_native_suite(suite):
             loca_h = loca_f = None
             if var in ("pr", "tasmax", "tasmin"):
                 try:
@@ -328,7 +328,7 @@ def run_signal_analysis(
                 print(f"  DOR skip {pid} {var}: {e}")
                 continue
 
-            if suite == gs.SUITE_GRIDMET_4KM:
+            if gs.is_dor_native_suite(suite):
                 all_rows.append(signal_row("S4_dor", "DOR", var, dor_h, dor_f, mask_2d, pid))
                 _, ddor = spatial_delta_maps(dor_h, dor_f, var)
             else:
@@ -353,7 +353,7 @@ def run_signal_analysis(
                 try:
                     dfu_u, ddf_u = load_dor_future_npz(dor_dir, var, shuffled=False)
                     dor_f_u = _slice_by_dates(dfu_u, ddf_u, fut_s, fut_e)
-                    if suite == gs.SUITE_GRIDMET_4KM:
+                    if gs.is_dor_native_suite(suite):
                         h_row, f_row = dor_h, dor_f_u
                     else:
                         assert eval_LAT is not None and eval_LON is not None
@@ -414,7 +414,7 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Climate signal by stage (S1–S4, LOCA2, NEX)")
     p.add_argument(
         "--suite",
-        default=gs.SUITE_GRIDMET_4KM,
+        default=gs.SUITE_DOR_NATIVE,
         help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
     )
     p.add_argument("--skip-dor", action="store_true", help="Only S3 + externals (no DOR NPZs)")
@@ -436,7 +436,7 @@ def main() -> int:
         suite=suite,
     )
 
-    suf = "" if suite == gs.SUITE_GRIDMET_4KM else f"_{suite}"
+    suf = "" if gs.is_dor_native_suite(suite) else f"_{suite}"
     out1 = out_root / f"climate_signal_by_stage{suf}.csv"
     out2 = out_root / f"climate_signal_preservation{suf}.csv"
     df_sig.to_csv(out1, index=False)
