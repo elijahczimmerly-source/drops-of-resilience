@@ -34,6 +34,10 @@ Outputs:
 
 This is **product vs product** validation against a **common observational reference** (GridMET), not a controlled method intercomparison. LOCA2 and NEX use different algorithms, BC, and native grids than your OTBC + regrid + stochastic pipeline. See [`LITERATURE.md`](LITERATURE.md) for published context and safe citation language.
 
+## Native-resolution suites (LOCA2 / NEX grids)
+
+Parallel benchmarks and figures for evaluation on **LOCA2** and **NEX** native grids use `DOR_BENCHMARK_SUITE=gridmet_4km|loca2_native|nex_native` (default `gridmet_4km`). Outputs for non-legacy suites live under [`output/suites/`](output/suites/README.md). End-to-end orchestration: [`scripts/run_e2e_suite.py`](scripts/run_e2e_suite.py) (env `DOR_E2E_SUITES`). Details: [`WORKLOG_NATIVE_RESOLUTION.md`](WORKLOG_NATIVE_RESOLUTION.md).
+
 ## Config
 
 Paths and bounds live in [`config.py`](config.py). Override with environment variables if needed:

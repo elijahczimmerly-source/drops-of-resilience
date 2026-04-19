@@ -1,0 +1,14 @@
+{
+  "benchmark_suite": "gridmet_4km",
+  "hist_window": {
+    "start": "1981-01-01",
+    "end": "2014-12-31"
+  },
+  "n_calendar_days_aligned": 12418,
+  "missing": {},
+  "interpretation_notes": [
+    "LOCA2 is bilinearly interpolated to 216x192 in load_loca2.py (smooths fine scales).",
+    "DOR uses stochastic multiplicative noise + OTBC (injects fine-scale variance).",
+    "plot_comparison_driver uses independent 2-98% color scales per panel."
+  ]
+}

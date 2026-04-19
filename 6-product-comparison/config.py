@@ -97,24 +97,43 @@ else:
     DOR_CROPPED_BC_ROOT = None
 
 # Default DOR output dirs per pipeline id (override with DOR_PRODUCT_ROOT for active run)
-def _dor_out(pipeline_id: str, subdir: str) -> Path:
+def _dor_repo_out(pipeline_id: str, subdir: str) -> Path:
     return REPO_ROOT / "pipeline" / "output" / pipeline_id / subdir
 
 
-DOR_DEFAULT_OUTPUTS = {
-    "test8_v2": _dor_out("test8_v2", "parity"),
-    "test8_v3": _dor_out("test8_v3", "experiment_blend0p65"),
-    "test8_v4": _dor_out("test8_v4", "experiment_blend0p65"),
-}
+def _build_dor_default_outputs() -> dict[str, Path]:
+    """
+    Prefer `DOR_PIPELINE_OUTPUT_ROOT` (parent of test8_v*/… NPZ trees), else repo `pipeline/output/`,
+    else a local mirror on D: when present (see WORKLOG_NATIVE_RESOLUTION.md).
+    """
+    env_root = os.environ.get("DOR_PIPELINE_OUTPUT_ROOT", "").strip()
+    candidates: list[Path] = []
+    if env_root:
+        candidates.append(Path(env_root))
+    candidates.append(REPO_ROOT / "pipeline" / "output")
+    # Common full-machine mirror (no repo-local pipeline outputs)
+    candidates.append(Path(r"D:\drops-resilience-data\dor_pipeline_output"))
+
+    chosen: Path | None = None
+    for base in candidates:
+        probe = base / "test8_v4" / "experiment_blend0p65" / "Stochastic_V8_Hybrid_pr.npz"
+        if probe.is_file():
+            chosen = base
+            break
+    if chosen is None:
+        chosen = REPO_ROOT / "pipeline" / "output"
+
+    return {
+        "test8_v2": chosen / "test8_v2" / "parity",
+        "test8_v3": chosen / "test8_v3" / "experiment_blend0p65",
+        "test8_v4": chosen / "test8_v4" / "experiment_blend0p65",
+    }
+
+
+DOR_DEFAULT_OUTPUTS = _build_dor_default_outputs()
 
 # DOR stochastic outputs (PR intensity blend 0.65; WDF default from test8_v4)
-_DEFAULT_DOR = (
-    REPO_ROOT
-    / "pipeline"
-    / "output"
-    / "test8_v4"
-    / "experiment_blend0p65"
-)
+_DEFAULT_DOR = DOR_DEFAULT_OUTPUTS["test8_v4"]
 DOR_PRODUCT_DIR = Path(os.environ.get("DOR_PRODUCT_ROOT", str(_DEFAULT_DOR)))
 
 GEO_MASK = _memmap_default(

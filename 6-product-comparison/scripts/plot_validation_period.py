@@ -8,14 +8,18 @@ series, time-mean and seasonal maps, snapshot days, and climate delta maps — u
 panels to that driver with **`python plot_validation_period.py --via-comparison-driver`**. For a **single row** of
 1981–2014 climatological means only, use `plot_climatology_comparisons.py` (independent 2–98% per panel).
 
-Outputs:
-  output/figures/validation_ts_<var>.png
-  output/figures/dor side-by-side/individual days/validation_maps_<var>_<YYYYMMDD>.png
-  output/figures/dor side-by-side/time aggregated/validation_agg_mean_<var>.png
-  output/figures/dor side-by-side/time aggregated/validation_agg_seasonal_<var>.png
+Outputs (gridmet_4km; native suites mirror under output/suites/<suite>/figures/):
+  figures/validation_ts_<var>.png
+  figures/dor side-by-side/individual days/validation_maps_<var>_<YYYYMMDD>.png
+  figures/dor side-by-side/time aggregated/validation_agg_mean_<var>.png
+  figures/dor side-by-side/time aggregated/validation_agg_seasonal_<var>.png
+
+Use `--suite` or DOR_BENCHMARK_SUITE. For full multi-product validation panels see
+`plot_comparison_driver.py --val`.
 """
 from __future__ import annotations
 
+import argparse
 import io
 import os
 import sys
@@ -37,6 +41,7 @@ import numpy as np
 import pandas as pd
 
 import config as cfg
+import grid_suites as gs
 from benchmark_io import load_aligned_stacks, high_pr_obs_date
 
 
@@ -143,8 +148,15 @@ def _domain_means(st) -> dict[str, np.ndarray]:
     return out
 
 
-def plot_domain_mean_timeseries(var: str, st) -> None:
-    cfg.FIG_DIR.mkdir(parents=True, exist_ok=True)
+def _fig_paths(suite: str):
+    base = gs.suite_fig_dir(suite)
+    ind = base / "dor side-by-side" / "individual days"
+    agg = base / "dor side-by-side" / "time aggregated"
+    return base, ind, agg
+
+
+def plot_domain_mean_timeseries(var: str, st, *, fig_dir: Path) -> None:
+    fig_dir.mkdir(parents=True, exist_ok=True)
     dm = _domain_means(st)
     fig, ax = plt.subplots(figsize=(12, 4))
     ax.plot(st.dates, dm["GridMET"], label="GridMET (target)", color="0.15", lw=0.9, alpha=0.95)
@@ -159,13 +171,13 @@ def plot_domain_mean_timeseries(var: str, st) -> None:
     ax.grid(True, alpha=0.25)
     fig.autofmt_xdate()
     fig.tight_layout()
-    p = cfg.FIG_DIR / f"validation_ts_{var}.png"
+    p = fig_dir / f"validation_ts_{var}.png"
     fig.savefig(str(p.resolve()), dpi=150)
     plt.close(fig)
     print(f"Wrote {p}")
 
 
-def plot_obs_vs_dor_maps(var: str, st, day_str: str) -> None:
+def plot_obs_vs_dor_maps(var: str, st, day_str: str, *, fig_individual: Path) -> None:
     idx = _day_index(st.dates, day_str)
     if idx is None:
         print(f"  skip maps {var} {day_str}: date not in aligned series")
@@ -175,7 +187,7 @@ def plot_obs_vs_dor_maps(var: str, st, day_str: str) -> None:
     if not np.any(np.isfinite(o)) and not np.any(np.isfinite(d)):
         return
     tag = pd.Timestamp(day_str).strftime("%Y%m%d")
-    p = cfg.FIG_VALIDATION_INDIVIDUAL_DAYS / f"validation_maps_{var}_{tag}.png"
+    p = fig_individual / f"validation_maps_{var}_{tag}.png"
     _save_obs_dor_pair(
         p,
         o,
@@ -187,10 +199,10 @@ def plot_obs_vs_dor_maps(var: str, st, day_str: str) -> None:
     )
 
 
-def plot_obs_vs_dor_mean_maps(var: str, st) -> None:
+def plot_obs_vs_dor_mean_maps(var: str, st, *, fig_agg: Path) -> None:
     o = np.nanmean(st.obs, axis=0)
     d = np.nanmean(st.dor, axis=0)
-    p = cfg.FIG_VALIDATION_TIME_AGG / f"validation_agg_mean_{var}.png"
+    p = fig_agg / f"validation_agg_mean_{var}.png"
     _save_obs_dor_pair(
         p,
         o,
@@ -202,7 +214,7 @@ def plot_obs_vs_dor_mean_maps(var: str, st) -> None:
     )
 
 
-def plot_obs_vs_dor_seasonal_maps(var: str, st) -> None:
+def plot_obs_vs_dor_seasonal_maps(var: str, st, *, fig_agg: Path) -> None:
     cmap = _cmap_for_var(var)
     fig, axes = plt.subplots(4, 2, figsize=(10, 12), constrained_layout=True)
     cbar_label = cfg.VAR_YLABEL.get(var, var)
@@ -229,7 +241,7 @@ def plot_obs_vs_dor_seasonal_maps(var: str, st) -> None:
         f"{var} - seasonal mean (2006-2014), per-row 2-98% on GridMET+DOR",
         fontsize=11,
     )
-    p = cfg.FIG_VALIDATION_TIME_AGG / f"validation_agg_seasonal_{var}.png"
+    p = fig_agg / f"validation_agg_seasonal_{var}.png"
     p.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(str(p.resolve()), dpi=150)
     plt.close(fig)
@@ -240,25 +252,45 @@ def main() -> int:
     if "--via-comparison-driver" in sys.argv:
         import plot_comparison_driver as pcd
 
-        sys.argv = [sys.argv[0], "--val", "--vars", ",".join(cfg.VARS)]
+        suite = gs.SUITE_GRIDMET_4KM
+        if "--suite" in sys.argv:
+            i = sys.argv.index("--suite")
+            if i + 1 < len(sys.argv):
+                suite = sys.argv[i + 1].strip().lower()
+        extra = ["--val", "--vars", ",".join(cfg.VARS), "--suite", suite]
+        sys.argv = [sys.argv[0], *extra]
         return pcd.main()
 
-    cfg.FIG_DIR.mkdir(parents=True, exist_ok=True)
-    cfg.FIG_VALIDATION_INDIVIDUAL_DAYS.mkdir(parents=True, exist_ok=True)
-    cfg.FIG_VALIDATION_TIME_AGG.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser(description="Validation-era GridMET vs DOR side-by-side maps")
+    ap.add_argument(
+        "--suite",
+        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_GRIDMET_4KM),
+        help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
+    )
+    args, _unknown = ap.parse_known_args()
+    suite = args.suite.strip().lower()
+    if suite not in gs.VALID_SUITES:
+        print(f"Invalid suite {suite!r}; expected one of {sorted(gs.VALID_SUITES)}")
+        return 1
+    os.environ["DOR_BENCHMARK_SUITE"] = suite
 
-    pr_st = load_aligned_stacks("pr")
+    fig_dir, fig_individual, fig_agg = _fig_paths(suite)
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    fig_individual.mkdir(parents=True, exist_ok=True)
+    fig_agg.mkdir(parents=True, exist_ok=True)
+
+    pr_st = load_aligned_stacks("pr", suite=suite)
     high_day = high_pr_obs_date(pr_st).strftime("%Y-%m-%d")
     map_dates = list(dict.fromkeys([*cfg.VALIDATION_MAP_DATES_FIXED, high_day]))
     print(f"Map snapshot dates: {map_dates} (includes max domain-mean pr day: {high_day})")
 
     for var in cfg.VARS:
-        st = load_aligned_stacks(var)
-        plot_domain_mean_timeseries(var, st)
+        st = load_aligned_stacks(var, suite=suite)
+        plot_domain_mean_timeseries(var, st, fig_dir=fig_dir)
         for day in map_dates:
-            plot_obs_vs_dor_maps(var, st, day)
-        plot_obs_vs_dor_mean_maps(var, st)
-        plot_obs_vs_dor_seasonal_maps(var, st)
+            plot_obs_vs_dor_maps(var, st, day, fig_individual=fig_individual)
+        plot_obs_vs_dor_mean_maps(var, st, fig_agg=fig_agg)
+        plot_obs_vs_dor_seasonal_maps(var, st, fig_agg=fig_agg)
 
     return 0
 

@@ -1,0 +1,24 @@
+{
+  "schema": "dor.pipeline.invocation.v1",
+  "created_utc": "2026-04-16T21:05:00+00:00",
+  "pipeline_id": "test8_v5",
+  "entry_script": "test8_v5.py",
+  "repo_root": "C:\\drops-of-resilience",
+  "pipeline_root": "C:\\drops-of-resilience\\pipeline",
+  "git_head": null,
+  "python": "python",
+  "environment": {
+    "DOR_PIPELINE_ROOT": "C:\\drops-of-resilience\\pipeline",
+    "DOR_TEST8_PR_DATA_DIR": "D:\\drops-resilience-data\\WRC_DOR_cache\\Spatial_Downscaling\\test8_v2\\Regridded_Iowa\\MPI\\mv_otbc",
+    "DOR_TEST8_GRIDMET_TARGETS_DAT": "D:\\drops-resilience-data\\WRC_DOR_cache\\Spatial_Downscaling\\test8_v2\\Regridded_Iowa\\gridmet_targets_19810101-20141231.dat",
+    "DOR_TEST8_GEO_MASK_NPY": "D:\\drops-resilience-data\\WRC_DOR_cache\\Spatial_Downscaling\\test8_v2\\Regridded_Iowa\\geo_mask.npy",
+    "DOR_LOCAL_WRC_CACHE": "D:\\drops-resilience-data\\WRC_DOR_cache",
+    "TEST8_MAIN_PERIOD_ONLY": "1",
+    "DOR_PIPELINE_ID": "test8_v5",
+    "PR_USE_INTENSITY_RATIO": "1",
+    "PR_INTENSITY_BLEND": "0.62",
+    "DOR_RATIO_SMOOTH_SIGMA": "1.0",
+    "PR_INTENSITY_OUT_TAG": "v5_blend0p62_sig1p0"
+  },
+  "purpose": "test8_v5 candidate v5_blend0p62_sig1p0; run_manifest.json from _test8_sd_impl. Written post-hoc to match run_three provenance pattern."
+}

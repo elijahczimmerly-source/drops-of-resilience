@@ -1,8 +1,9 @@
 {
-  "pooled_mean_bias_Wm2_target_grid": 36.677102401675505,
-  "pooled_rmse_Wm2_target_grid": 68.77130265099169,
+  "benchmark_suite": "gridmet_4km",
+  "pooled_mean_bias_Wm2_evaluation_grid": 36.677102401675505,
+  "pooled_rmse_Wm2_evaluation_grid": 68.77130265099169,
   "mean_obs_Wm2": 175.3331259980923,
   "mean_nex_Wm2": 211.9788096463299,
   "relative_bias_pct_of_obs_mean": 20.918524205098233,
-  "pooled_mean_bias_Wm2_native_nex_grid": 36.62973259442717
+  "pooled_mean_bias_Wm2_native_nex_grid_minus_interp_obs": 36.62973259442717
 }

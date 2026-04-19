@@ -1,6 +1,7 @@
 """
 Run product-comparison stack end-to-end: batch benchmarks, climate signal, extended diagnostics,
-climatology maps, multi-product plot driver, validation-era DOR plots.
+climatology maps, multi-product plot driver, validation-era DOR plots, NEX rsds diagnostic,
+PR texture, provenance.
 
 Requires local memmaps (see config DOR_LOCAL_WRC_CACHE) and **distinct** DOR outputs under
 `pipeline/output/test8_v2|v3|v4/...` from `pipeline/scripts/run_three_distinct_outputs.py`
@@ -8,6 +9,10 @@ Requires local memmaps (see config DOR_LOCAL_WRC_CACHE) and **distinct** DOR out
 
 Optional legacy: set DOR_BENCHMARK_SHARED_NPZ_ROOT and DOR_ALLOW_SHARED_BENCHMARK_MIRROR=1
 (same NPZs for all pipeline IDs — not a true three-way comparison).
+
+Environment:
+  DOR_E2E_SUITES — comma-separated list (default: gridmet_4km,loca2_native,nex_native).
+  Steps that are suite-specific set DOR_BENCHMARK_SUITE / `--suite` per iteration.
 """
 from __future__ import annotations
 
@@ -19,6 +24,8 @@ from pathlib import Path
 PC_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = PC_ROOT / "scripts"
 REPO_ROOT = PC_ROOT.parent
+
+DEFAULT_SUITES = ("gridmet_4km", "loca2_native", "nex_native")
 
 
 def _require_distinct_dor() -> bool:
@@ -41,10 +48,22 @@ def _require_distinct_dor() -> bool:
 
 def _run(name: str, args: list[str]) -> int:
     print(f"\n{'='*60}\n>>> {name}\n{'='*60}")
-    r = subprocess.run([sys.executable, str(SCRIPTS / args[0]), *args[1:]], cwd=str(PC_ROOT))
+    env = os.environ.copy()
+    env.setdefault("PYTHONUNBUFFERED", "1")
+    r = subprocess.run(
+        [sys.executable, str(SCRIPTS / args[0]), *args[1:]],
+        cwd=str(PC_ROOT),
+        env=env,
+    )
     if r.returncode != 0:
         print(f"FAILED: {name} (exit {r.returncode})")
     return r.returncode
+
+
+def _parse_suites() -> tuple[str, ...]:
+    raw = os.environ.get("DOR_E2E_SUITES", ",".join(DEFAULT_SUITES)).strip()
+    parts = tuple(s.strip().lower() for s in raw.split(",") if s.strip())
+    return parts if parts else DEFAULT_SUITES
 
 
 def main() -> int:
@@ -64,21 +83,75 @@ def main() -> int:
         if v4.is_dir():
             os.environ.setdefault("DOR_PRODUCT_ROOT", str(v4.resolve()))
 
-    steps = [
-        ("batch_benchmark_pipelines.py", []),
-        ("run_climate_signal_stages.py", []),
-        ("extended_stage_diagnostics.py", []),
-        ("multivariate_dor_signal.py", []),
-        ("plot_climatology_comparisons.py", []),
-        ("plot_comparison_driver.py", ["--all"]),
-        ("plot_validation_period.py", []),
-        ("collect_benchmark_provenance.py", []),
-    ]
+    suites = _parse_suites()
     code = 0
-    for script, extra in steps:
-        rc = _run(script, [script, *extra])
+
+    rc = _run("batch_benchmark_pipelines (all suites)", ["batch_benchmark_pipelines.py"])
+    if rc != 0:
+        code = rc
+
+    for suite in suites:
+        os.environ["DOR_BENCHMARK_SUITE"] = suite
+        for label, args in (
+            (
+                f"run_climate_signal_stages [{suite}]",
+                ["run_climate_signal_stages.py", "--suite", suite],
+            ),
+            (
+                f"extended_stage_diagnostics [{suite}]",
+                ["extended_stage_diagnostics.py", "--suite", suite],
+            ),
+            (
+                f"plot_comparison_driver [{suite}]",
+                ["plot_comparison_driver.py", "--all", "--suite", suite],
+            ),
+        ):
+            rc = _run(label, args)
+            if rc != 0:
+                code = rc
+
+    rc = _run("multivariate_dor_signal.py", ["multivariate_dor_signal.py"])
+    if rc != 0:
+        code = rc
+
+    for suite in suites:
+        rc = _run(
+            f"plot_climatology_comparisons [{suite}]",
+            ["plot_climatology_comparisons.py", "--suite", suite],
+        )
         if rc != 0:
             code = rc
+
+    for suite in suites:
+        rc = _run(
+            f"plot_validation_period [{suite}]",
+            ["plot_validation_period.py", "--suite", suite],
+        )
+        if rc != 0:
+            code = rc
+
+    for suite in ("gridmet_4km", "nex_native"):
+        if suite not in suites:
+            continue
+        rc = _run(
+            f"diagnose_nex_rsds [{suite}]",
+            ["diagnose_nex_rsds.py", "--suite", suite],
+        )
+        if rc != 0:
+            code = rc
+
+    for suite in suites:
+        rc = _run(
+            f"pr_texture_investigation [{suite}]",
+            ["pr_texture_investigation.py", "--suite", suite],
+        )
+        if rc != 0:
+            code = rc
+
+    rc = _run("collect_benchmark_provenance.py", ["collect_benchmark_provenance.py"])
+    if rc != 0:
+        code = rc
+
     print(f"\nE2E suite finished (last non-zero exit: {code})")
     return code
 

@@ -7,9 +7,10 @@ Canonical code for the Iowa **test8** stochastic spatial downscaling line (optio
 - **`scripts/test8_v2.py`** — **Bhuwan-parity-oriented** preset: default `PR_WDF_THRESHOLD_FACTOR=1.65`, `DOR_PR_CORR_LENGTH=35` (pr), `DOR_MULTIPLICATIVE_NOISE_DEBIAS=0`, no `PR_INTENSITY_BLEND` preset (impl default 1.0 when intensity is off). Still the shared fork in `_test8_sd_impl.py`, not a byte copy of Bhuwan’s server `test8_v2.py`.
 - **`scripts/test8_v3.py`** — PR-intensity workflow with **legacy** wet-day scaling: default `PR_WDF_THRESHOLD_FACTOR=1.15` (blend defaults to **0.65** when unset).
 - **`scripts/test8_v4.py`** — Recommended default for PR-intensity experiments: **tuned** WDF for Regridded_Iowa **216×192**: default `PR_WDF_THRESHOLD_FACTOR=1.65`, blend **0.65** when unset.
-- **`scripts/_test8_sd_impl.py`** — Shared implementation; run via `test8_v2.py` / `test8_v3.py` / `test8_v4.py` (or `runpy` with `DOR_PIPELINE_ID` set).
+- **`scripts/test8_attempt2_pr_splotch_blend0p62_dor_ratio_smooth_sigma1p0.py`** — **Archived** one-off (see `9-fix-pr-splotchiness-attempt-2/NEGATIVE_RESULT_ATTEMPT2.md`): blend **0.62**, `DOR_RATIO_SMOOTH_SIGMA=1.0`, pipeline id `test8_pr_tex_att2_b062_rs1`. **Not** part of the production evolution; visuals matched v4.
+- **`scripts/_test8_sd_impl.py`** — Shared implementation; run via `test8_v2.py` … `test8_v4.py`, or the archived attempt script above (or `runpy` with `DOR_PIPELINE_ID` set).
 
-Outputs go under **`<DOR_PIPELINE_ROOT>/output/<test8_v2|test8_v3|test8_v4>/`**. If `DOR_PIPELINE_ROOT` is unset, it defaults to the parent of `scripts/` (this `pipeline/` folder).
+Outputs go under **`<DOR_PIPELINE_ROOT>/output/<test8_v2|test8_v3|test8_v4>/`**, plus **`test8_pr_tex_att2_b062_rs1/`** only if you run the archived attempt script. If `DOR_PIPELINE_ROOT` is unset, it defaults to the parent of `scripts/` (this `pipeline/` folder).
 
 Memmaps and geo files usually live in **`data/`** next to the pipeline root. Point **`DOR_PIPELINE_ROOT`** at a folder that contains `data/` (for example the legacy task folder `4-test8-v2-pr-intensity/`) if those files are not under `pipeline/data/`.
 

@@ -14,10 +14,15 @@ import pandas as pd
 import config as cfg
 from align import align_to_obs_with_dates
 from climate_signal_io import load_cmip6_variable
+from grid_suites import SUITE_GRIDMET_4KM, SUITE_LOCA2_NATIVE, SUITE_NEX_NATIVE, benchmark_suite
 from grid_target import load_target_grid
+from interp_from_gridmet_stack import (
+    interp_curvilinear_stack_to_target,
+    interp_gridmet_stack_to_target,
+)
 from load_dor import load_dor_variable, validation_mask
-from load_loca2 import load_loca_on_grid
-from load_nex import load_nex_on_grid
+from load_loca2 import get_loca_validation_mesh, load_loca_native, load_loca_on_grid
+from load_nex import get_nex_validation_mesh, load_nex_native, load_nex_on_grid
 from load_obs import load_obs_historical_full, load_obs_validation
 
 LOCA_VARS = frozenset({"pr", "tasmax", "tasmin"})
@@ -66,7 +71,18 @@ class MultiProductStacks:
     missing: dict[str, str] = field(default_factory=dict)
 
 
-def load_aligned_stacks(var: str) -> AlignedStacks:
+def load_aligned_stacks(var: str, suite: str | None = None) -> AlignedStacks:
+    s = suite if suite is not None else benchmark_suite()
+    if s == SUITE_GRIDMET_4KM:
+        return _load_aligned_stacks_gridmet_4km(var)
+    if s == SUITE_LOCA2_NATIVE:
+        return _load_aligned_stacks_loca2_native(var)
+    if s == SUITE_NEX_NATIVE:
+        return _load_aligned_stacks_nex_native(var)
+    raise ValueError(f"Unknown suite: {s}")
+
+
+def _load_aligned_stacks_gridmet_4km(var: str) -> AlignedStacks:
     lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
     obs, obs_dates = load_obs_validation(var)
     dor_full, dor_dates = load_dor_variable(var)
@@ -95,6 +111,89 @@ def load_aligned_stacks(var: str) -> AlignedStacks:
 
     return AlignedStacks(
         obs=obs_a, dor=dor_a, loca2=loca_a, nex=nex_a, dates=dates
+    )
+
+
+def _load_aligned_stacks_loca2_native(var: str) -> AlignedStacks:
+    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
+    LAT2, LON2 = get_loca_validation_mesh(lat_tgt, lon_tgt)
+    obs, obs_dates = load_obs_validation(var)
+    dor_full, dor_dates = load_dor_variable(var)
+    m = validation_mask(dor_dates)
+    dor_v, obs_v, dates_od = align_to_obs_with_dates(
+        dor_full[m], dor_dates[m], obs, obs_dates
+    )
+    if var in LOCA_VARS:
+        loca_tot, lt, _, _ = load_loca_native(
+            var, lat_tgt, lon_tgt, scenario="historical", time_start=cfg.VAL_START, time_end=cfg.VAL_END
+        )
+        parts = [
+            ("obs", obs_v, dates_od),
+            ("dor", dor_v, dates_od),
+            ("loca2", loca_tot, lt),
+        ]
+        aligned, dates = _align_on_common(parts)
+        obs_i = interp_gridmet_stack_to_target(aligned["obs"], lat_tgt, lon_tgt, LAT2, LON2)
+        dor_i = interp_gridmet_stack_to_target(aligned["dor"], lat_tgt, lon_tgt, LAT2, LON2)
+        loca_a = aligned["loca2"].astype(np.float32, copy=False)
+    else:
+        aligned, dates = _align_on_common([("obs", obs_v, dates_od), ("dor", dor_v, dates_od)])
+        obs_i = interp_gridmet_stack_to_target(aligned["obs"], lat_tgt, lon_tgt, LAT2, LON2)
+        dor_i = interp_gridmet_stack_to_target(aligned["dor"], lat_tgt, lon_tgt, LAT2, LON2)
+        loca_a = np.full(obs_i.shape, np.nan, dtype=np.float32)
+    return AlignedStacks(
+        obs=obs_i,
+        dor=dor_i,
+        loca2=loca_a,
+        nex=np.full(obs_i.shape, np.nan, dtype=np.float32),
+        dates=dates,
+    )
+
+
+def _load_aligned_stacks_nex_native(var: str) -> AlignedStacks:
+    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
+    obs, obs_dates = load_obs_validation(var)
+    dor_full, dor_dates = load_dor_variable(var)
+    m = validation_mask(dor_dates)
+    dor_v, obs_v, dates_od = align_to_obs_with_dates(
+        dor_full[m], dor_dates[m], obs, obs_dates
+    )
+    nex_tot, nt, LATn, LONn = load_nex_native(
+        var,
+        lat_tgt,
+        lon_tgt,
+        scenario="historical",
+        year_start=int(cfg.VAL_START[:4]),
+        year_end=int(cfg.VAL_END[:4]),
+    )
+    parts: list = [
+        ("obs", obs_v, dates_od),
+        ("dor", dor_v, dates_od),
+        ("nex", nex_tot, nt),
+    ]
+    loca_LAT = loca_LON = None
+    if var in LOCA_VARS:
+        loca_tot, lt, loca_LAT, loca_LON = load_loca_native(
+            var, lat_tgt, lon_tgt, scenario="historical", time_start=cfg.VAL_START, time_end=cfg.VAL_END
+        )
+        parts.append(("loca2", loca_tot, lt))
+    aligned, dates = _align_on_common(parts)
+    obs_i = interp_gridmet_stack_to_target(aligned["obs"], lat_tgt, lon_tgt, LATn, LONn)
+    dor_i = interp_gridmet_stack_to_target(aligned["dor"], lat_tgt, lon_tgt, LATn, LONn)
+    nex_a = aligned["nex"].astype(np.float32, copy=False)
+    loca2_a: np.ndarray | None = None
+    if "loca2" in aligned and loca_LAT is not None:
+        loca2_a = interp_curvilinear_stack_to_target(
+            aligned["loca2"], loca_LAT, loca_LON, LATn, LONn
+        )
+    if nex_a.shape != obs_i.shape:
+        raise ValueError(f"NEX native shape {nex_a.shape} vs interp obs {obs_i.shape}")
+    return AlignedStacks(
+        obs=obs_i,
+        dor=dor_i,
+        loca2=loca2_a,
+        nex=nex_a,
+        dates=dates,
     )
 
 
@@ -158,8 +257,21 @@ def _load_dor_val_slice(var: str, root: Path) -> tuple[np.ndarray | None, pd.Dat
     return data[m], dates[m], ""
 
 
-def load_multi_product_validation(var: str) -> MultiProductStacks:
+def load_multi_product_validation(
+    var: str, suite: str | None = None
+) -> MultiProductStacks:
     """2006–2014: GridMET, S3 cmip6_inputs, DOR for each default pipeline, LOCA2, NEX."""
+    s = suite if suite is not None else benchmark_suite()
+    if s == SUITE_GRIDMET_4KM:
+        return _load_multi_product_validation_gridmet(var)
+    if s == SUITE_LOCA2_NATIVE:
+        return _load_multi_product_validation_loca2_native(var)
+    if s == SUITE_NEX_NATIVE:
+        return _load_multi_product_validation_nex_native(var)
+    raise ValueError(f"Unknown suite: {s}")
+
+
+def _load_multi_product_validation_gridmet(var: str) -> MultiProductStacks:
     lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
     missing: dict[str, str] = {}
     parts: list[tuple[str, np.ndarray, pd.DatetimeIndex]] = []
@@ -221,8 +333,173 @@ def load_multi_product_validation(var: str) -> MultiProductStacks:
     )
 
 
-def load_multi_product_historical(var: str) -> MultiProductStacks:
+def _load_multi_product_validation_loca2_native(var: str) -> MultiProductStacks:
+    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
+    LAT2, LON2 = get_loca_validation_mesh(lat_tgt, lon_tgt)
+    missing: dict[str, str] = {}
+    parts: list[tuple[str, np.ndarray, pd.DatetimeIndex]] = []
+
+    obs, od = load_obs_validation(var)
+    parts.append(("obs", obs, od))
+
+    if cfg.CMIP6_HIST_DAT.is_file():
+        try:
+            s3, sd = load_cmip6_variable(cfg.CMIP6_HIST_DAT, var, cfg.VAL_START, cfg.VAL_END)
+            parts.append(("s3", s3, sd))
+        except OSError as e:
+            missing["s3"] = str(e)
+    else:
+        missing["s3"] = "CMIP6_HIST_DAT not found"
+
+    for pid, root in cfg.DOR_DEFAULT_OUTPUTS.items():
+        root_eff = _dor_root_with_shared_fallback(root)
+        dslice, dd, err = _load_dor_val_slice(var, root_eff)
+        if dslice is None:
+            missing[f"dor_{pid}"] = err
+            continue
+        parts.append((f"dor_{pid}", dslice, dd))
+
+    if var in LOCA_VARS:
+        try:
+            loca, lt, _, _ = load_loca_native(
+                var, lat_tgt, lon_tgt, scenario="historical", time_start=cfg.VAL_START, time_end=cfg.VAL_END
+            )
+            parts.append(("loca2", loca, lt))
+        except (FileNotFoundError, OSError, ValueError) as e:
+            missing["loca2"] = str(e)
+    else:
+        missing["loca2"] = "not_applicable_external"
+
+    aligned, dates = _align_on_common(parts)
+    s3_arr = aligned.pop("s3", None)
+    loca_arr = aligned.pop("loca2", None)
+    obs_a = aligned.pop("obs")
+    dor_out: dict[str, np.ndarray] = {}
+    for k, v in list(aligned.items()):
+        if k.startswith("dor_"):
+            dor_out[k.replace("dor_", "", 1)] = v
+
+    obs_a = interp_gridmet_stack_to_target(obs_a, lat_tgt, lon_tgt, LAT2, LON2)
+    if s3_arr is not None:
+        s3_arr = interp_gridmet_stack_to_target(s3_arr, lat_tgt, lon_tgt, LAT2, LON2)
+    for k in list(dor_out.keys()):
+        dor_out[k] = interp_gridmet_stack_to_target(dor_out[k], lat_tgt, lon_tgt, LAT2, LON2)
+    if loca_arr is not None:
+        loca_arr = loca_arr.astype(np.float32, copy=False)
+    else:
+        loca_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    nex_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    return MultiProductStacks(
+        obs=obs_a,
+        s3=s3_arr,
+        dor=dor_out,
+        loca2=loca_arr,
+        nex=nex_arr,
+        dates=dates,
+        missing=missing,
+    )
+
+
+def _load_multi_product_validation_nex_native(var: str) -> MultiProductStacks:
+    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
+    LATn, LONn = get_nex_validation_mesh(lat_tgt, lon_tgt)
+    missing: dict[str, str] = {}
+    parts: list[tuple[str, np.ndarray, pd.DatetimeIndex]] = []
+
+    obs, od = load_obs_validation(var)
+    parts.append(("obs", obs, od))
+
+    if cfg.CMIP6_HIST_DAT.is_file():
+        try:
+            s3, sd = load_cmip6_variable(cfg.CMIP6_HIST_DAT, var, cfg.VAL_START, cfg.VAL_END)
+            parts.append(("s3", s3, sd))
+        except OSError as e:
+            missing["s3"] = str(e)
+    else:
+        missing["s3"] = "CMIP6_HIST_DAT not found"
+
+    for pid, root in cfg.DOR_DEFAULT_OUTPUTS.items():
+        root_eff = _dor_root_with_shared_fallback(root)
+        dslice, dd, err = _load_dor_val_slice(var, root_eff)
+        if dslice is None:
+            missing[f"dor_{pid}"] = err
+            continue
+        parts.append((f"dor_{pid}", dslice, dd))
+
+    loca_LAT = loca_LON = None
+    if var in LOCA_VARS:
+        try:
+            loca, lt, loca_LAT, loca_LON = load_loca_native(
+                var, lat_tgt, lon_tgt, scenario="historical", time_start=cfg.VAL_START, time_end=cfg.VAL_END
+            )
+            parts.append(("loca2", loca, lt))
+        except (FileNotFoundError, OSError, ValueError) as e:
+            missing["loca2"] = str(e)
+    else:
+        missing["loca2"] = "not_applicable_external"
+
+    try:
+        nex, nt, _, _ = load_nex_native(
+            var,
+            lat_tgt,
+            lon_tgt,
+            scenario="historical",
+            year_start=int(cfg.VAL_START[:4]),
+            year_end=int(cfg.VAL_END[:4]),
+        )
+        parts.append(("nex", nex, nt))
+    except (FileNotFoundError, OSError) as e:
+        missing["nex"] = str(e)
+
+    aligned, dates = _align_on_common(parts)
+    s3_arr = aligned.pop("s3", None)
+    loca_arr = aligned.pop("loca2", None)
+    nex_arr = aligned.pop("nex", None)
+    obs_a = aligned.pop("obs")
+    dor_out: dict[str, np.ndarray] = {}
+    for k, v in list(aligned.items()):
+        if k.startswith("dor_"):
+            dor_out[k.replace("dor_", "", 1)] = v
+
+    obs_a = interp_gridmet_stack_to_target(obs_a, lat_tgt, lon_tgt, LATn, LONn)
+    if s3_arr is not None:
+        s3_arr = interp_gridmet_stack_to_target(s3_arr, lat_tgt, lon_tgt, LATn, LONn)
+    for k in list(dor_out.keys()):
+        dor_out[k] = interp_gridmet_stack_to_target(dor_out[k], lat_tgt, lon_tgt, LATn, LONn)
+    if loca_arr is not None and loca_LAT is not None:
+        loca_arr = interp_curvilinear_stack_to_target(loca_arr, loca_LAT, loca_LON, LATn, LONn)
+    else:
+        loca_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    if nex_arr is None:
+        nex_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    else:
+        nex_arr = nex_arr.astype(np.float32, copy=False)
+    return MultiProductStacks(
+        obs=obs_a,
+        s3=s3_arr,
+        dor=dor_out,
+        loca2=loca_arr,
+        nex=nex_arr,
+        dates=dates,
+        missing=missing,
+    )
+
+
+def load_multi_product_historical(
+    var: str, suite: str | None = None
+) -> MultiProductStacks:
     """1981–2014: GridMET, S3, DOR per default pipeline, LOCA2, NEX (inner-join calendars)."""
+    s = suite if suite is not None else benchmark_suite()
+    if s == SUITE_GRIDMET_4KM:
+        return _load_multi_product_historical_gridmet(var)
+    if s == SUITE_LOCA2_NATIVE:
+        return _load_multi_product_historical_loca2_native(var)
+    if s == SUITE_NEX_NATIVE:
+        return _load_multi_product_historical_nex_native(var)
+    raise ValueError(f"Unknown suite: {s}")
+
+
+def _load_multi_product_historical_gridmet(var: str) -> MultiProductStacks:
     lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
     missing: dict[str, str] = {}
     parts: list[tuple[str, np.ndarray, pd.DatetimeIndex]] = []
@@ -285,6 +562,168 @@ def load_multi_product_historical(var: str) -> MultiProductStacks:
     for k, v in list(aligned.items()):
         if k.startswith("dor_"):
             dor_out[k.replace("dor_", "", 1)] = v
+    return MultiProductStacks(
+        obs=obs_a,
+        s3=s3_arr,
+        dor=dor_out,
+        loca2=loca_arr,
+        nex=nex_arr,
+        dates=dates,
+        missing=missing,
+    )
+
+
+def _load_multi_product_historical_loca2_native(var: str) -> MultiProductStacks:
+    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
+    LAT2, LON2 = get_loca_validation_mesh(lat_tgt, lon_tgt)
+    missing: dict[str, str] = {}
+    parts: list[tuple[str, np.ndarray, pd.DatetimeIndex]] = []
+
+    obs, od = load_obs_historical_full(var)
+    parts.append(("obs", obs, od))
+
+    if cfg.CMIP6_HIST_DAT.is_file():
+        try:
+            s3, sd = load_cmip6_variable(cfg.CMIP6_HIST_DAT, var, cfg.HIST_START, cfg.HIST_END)
+            parts.append(("s3", s3, sd))
+        except OSError as e:
+            missing["s3"] = str(e)
+    else:
+        missing["s3"] = "CMIP6_HIST_DAT not found"
+
+    for pid, root in cfg.DOR_DEFAULT_OUTPUTS.items():
+        root_eff = _dor_root_with_shared_fallback(root)
+        dslice, dd, err = _load_dor_hist_slice(var, root_eff)
+        if dslice is None:
+            missing[f"dor_{pid}"] = err
+            continue
+        parts.append((f"dor_{pid}", dslice, dd))
+
+    if var in LOCA_VARS:
+        try:
+            loca, lt, _, _ = load_loca_native(
+                var,
+                lat_tgt,
+                lon_tgt,
+                scenario="historical",
+                time_start=cfg.HIST_START,
+                time_end=cfg.HIST_END,
+            )
+            parts.append(("loca2", loca, lt))
+        except (FileNotFoundError, OSError, ValueError) as e:
+            missing["loca2"] = str(e)
+    else:
+        missing["loca2"] = "not_applicable_external"
+
+    aligned, dates = _align_on_common(parts)
+    s3_arr = aligned.pop("s3", None)
+    loca_arr = aligned.pop("loca2", None)
+    obs_a = aligned.pop("obs")
+    dor_out: dict[str, np.ndarray] = {}
+    for k, v in list(aligned.items()):
+        if k.startswith("dor_"):
+            dor_out[k.replace("dor_", "", 1)] = v
+
+    obs_a = interp_gridmet_stack_to_target(obs_a, lat_tgt, lon_tgt, LAT2, LON2)
+    if s3_arr is not None:
+        s3_arr = interp_gridmet_stack_to_target(s3_arr, lat_tgt, lon_tgt, LAT2, LON2)
+    for k in list(dor_out.keys()):
+        dor_out[k] = interp_gridmet_stack_to_target(dor_out[k], lat_tgt, lon_tgt, LAT2, LON2)
+    if loca_arr is not None:
+        loca_arr = loca_arr.astype(np.float32, copy=False)
+    else:
+        loca_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    nex_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    return MultiProductStacks(
+        obs=obs_a,
+        s3=s3_arr,
+        dor=dor_out,
+        loca2=loca_arr,
+        nex=nex_arr,
+        dates=dates,
+        missing=missing,
+    )
+
+
+def _load_multi_product_historical_nex_native(var: str) -> MultiProductStacks:
+    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
+    LATn, LONn = get_nex_validation_mesh(lat_tgt, lon_tgt)
+    missing: dict[str, str] = {}
+    parts: list[tuple[str, np.ndarray, pd.DatetimeIndex]] = []
+
+    obs, od = load_obs_historical_full(var)
+    parts.append(("obs", obs, od))
+
+    if cfg.CMIP6_HIST_DAT.is_file():
+        try:
+            s3, sd = load_cmip6_variable(cfg.CMIP6_HIST_DAT, var, cfg.HIST_START, cfg.HIST_END)
+            parts.append(("s3", s3, sd))
+        except OSError as e:
+            missing["s3"] = str(e)
+    else:
+        missing["s3"] = "CMIP6_HIST_DAT not found"
+
+    for pid, root in cfg.DOR_DEFAULT_OUTPUTS.items():
+        root_eff = _dor_root_with_shared_fallback(root)
+        dslice, dd, err = _load_dor_hist_slice(var, root_eff)
+        if dslice is None:
+            missing[f"dor_{pid}"] = err
+            continue
+        parts.append((f"dor_{pid}", dslice, dd))
+
+    loca_LAT = loca_LON = None
+    if var in LOCA_VARS:
+        try:
+            loca, lt, loca_LAT, loca_LON = load_loca_native(
+                var,
+                lat_tgt,
+                lon_tgt,
+                scenario="historical",
+                time_start=cfg.HIST_START,
+                time_end=cfg.HIST_END,
+            )
+            parts.append(("loca2", loca, lt))
+        except (FileNotFoundError, OSError, ValueError) as e:
+            missing["loca2"] = str(e)
+    else:
+        missing["loca2"] = "not_applicable_external"
+
+    try:
+        nex, nt, _, _ = load_nex_native(
+            var,
+            lat_tgt,
+            lon_tgt,
+            scenario="historical",
+            year_start=int(cfg.HIST_START[:4]),
+            year_end=int(cfg.HIST_END[:4]),
+        )
+        parts.append(("nex", nex, nt))
+    except (FileNotFoundError, OSError) as e:
+        missing["nex"] = str(e)
+
+    aligned, dates = _align_on_common(parts)
+    s3_arr = aligned.pop("s3", None)
+    loca_arr = aligned.pop("loca2", None)
+    nex_arr = aligned.pop("nex", None)
+    obs_a = aligned.pop("obs")
+    dor_out: dict[str, np.ndarray] = {}
+    for k, v in list(aligned.items()):
+        if k.startswith("dor_"):
+            dor_out[k.replace("dor_", "", 1)] = v
+
+    obs_a = interp_gridmet_stack_to_target(obs_a, lat_tgt, lon_tgt, LATn, LONn)
+    if s3_arr is not None:
+        s3_arr = interp_gridmet_stack_to_target(s3_arr, lat_tgt, lon_tgt, LATn, LONn)
+    for k in list(dor_out.keys()):
+        dor_out[k] = interp_gridmet_stack_to_target(dor_out[k], lat_tgt, lon_tgt, LATn, LONn)
+    if loca_arr is not None and loca_LAT is not None:
+        loca_arr = interp_curvilinear_stack_to_target(loca_arr, loca_LAT, loca_LON, LATn, LONn)
+    else:
+        loca_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    if nex_arr is None:
+        nex_arr = np.full_like(obs_a, np.nan, dtype=np.float32)
+    else:
+        nex_arr = nex_arr.astype(np.float32, copy=False)
     return MultiProductStacks(
         obs=obs_a,
         s3=s3_arr,

@@ -11,6 +11,7 @@ REPO_ROOT = PC_ROOT.parent
 sys.path.insert(0, str(PC_ROOT))
 
 import config as cfg
+import grid_suites as gs
 
 
 def main() -> int:
@@ -39,6 +40,18 @@ def main() -> int:
     }
     (out / "bundle_index.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
+
+    for suite in sorted(gs.VALID_SUITES):
+        if suite == gs.SUITE_GRIDMET_4KM:
+            continue
+        dest_parent = gs.suite_output_dir(suite)
+        dest_parent.mkdir(parents=True, exist_ok=True)
+        dest = dest_parent / "benchmark_bundle"
+        if dest.is_dir():
+            shutil.rmtree(dest)
+        shutil.copytree(out, dest)
+        print(f"Mirrored benchmark_bundle -> {dest}")
+
     return 0
 
 

@@ -20,6 +20,7 @@ for _p in (SCRIPTS, PC_ROOT):
         sys.path.insert(0, str(_p))
 
 import config as cfg
+import grid_suites as gs
 from climate_signal_io import (
     VARS_INTERNAL,
     SignalSliceResult,
@@ -34,8 +35,9 @@ from climate_signal_io import (
 )
 from coarse_stage_io import coarse_mask_from_shape, load_s1_raw_cropped_slices, load_s2_bc_otbc_slices
 from grid_target import load_target_grid
-from load_loca2 import load_loca_on_grid
-from load_nex import load_nex_on_grid
+from interp_from_gridmet_stack import interp_curvilinear_stack_to_target, interp_geo_mask_to_target, interp_gridmet_stack_to_target
+from load_loca2 import get_loca_validation_mesh, load_loca_native, load_loca_on_grid
+from load_nex import get_nex_validation_mesh, load_nex_native, load_nex_on_grid
 from tier_b_alignment import upsample_coarse_delta_bilinear
 
 
@@ -92,6 +94,7 @@ def run_signal_analysis(
     *,
     skip_dor: bool = False,
     include_unshuffled_s4: bool = False,
+    suite: str | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if not cfg.CMIP6_HIST_DAT.is_file() or not cfg.CMIP6_FUTURE_DAT.is_file():
         print(
@@ -100,12 +103,24 @@ def run_signal_analysis(
         )
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
+    suite = suite if suite is not None else gs.benchmark_suite()
     pipeline_ids = ["test8_v2", "test8_v3", "test8_v4"]
     lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
     if cfg.GEO_MASK.is_file():
-        mask_2d = np.load(cfg.GEO_MASK) == 1
+        mg = np.load(cfg.GEO_MASK)
+        mask_gridmet = mg.astype(np.float32)
     else:
-        mask_2d = np.ones((cfg.H, cfg.W), dtype=bool)
+        mask_gridmet = np.ones((cfg.H, cfg.W), dtype=np.float32)
+
+    eval_LAT = eval_LON = None
+    if suite == gs.SUITE_GRIDMET_4KM:
+        mask_2d = mask_gridmet >= 0.5
+    elif suite == gs.SUITE_LOCA2_NATIVE:
+        eval_LAT, eval_LON = get_loca_validation_mesh(lat_tgt, lon_tgt)
+        mask_2d = interp_geo_mask_to_target(mask_gridmet, lat_tgt, lon_tgt, eval_LAT, eval_LON)
+    else:
+        eval_LAT, eval_LON = get_nex_validation_mesh(lat_tgt, lon_tgt)
+        mask_2d = interp_geo_mask_to_target(mask_gridmet, lat_tgt, lon_tgt, eval_LAT, eval_LON)
 
     hist_s, hist_e = cfg.SIGNAL_HIST_START, cfg.SIGNAL_HIST_END
     fut_s, fut_e = cfg.SIGNAL_FUT_START, cfg.SIGNAL_FUT_END
@@ -166,11 +181,17 @@ def run_signal_analysis(
 
         s3_hist, _ = load_cmip6_variable(cfg.CMIP6_HIST_DAT, var, hist_s, hist_e)
         s3_fut, _ = load_cmip6_variable(cfg.CMIP6_FUTURE_DAT, var, fut_s, fut_e)
-        _, ds3 = spatial_delta_maps(s3_hist, s3_fut, var)
+        if suite == gs.SUITE_GRIDMET_4KM:
+            _, ds3 = spatial_delta_maps(s3_hist, s3_fut, var)
+            all_rows.append(signal_row("S3_regrid", "cmip6_inputs", var, s3_hist, s3_fut, mask_2d, None))
+        else:
+            assert eval_LAT is not None and eval_LON is not None
+            s3_hi = interp_gridmet_stack_to_target(s3_hist, lat_tgt, lon_tgt, eval_LAT, eval_LON)
+            s3_fi = interp_gridmet_stack_to_target(s3_fut, lat_tgt, lon_tgt, eval_LAT, eval_LON)
+            _, ds3 = spatial_delta_maps(s3_hi, s3_fi, var)
+            all_rows.append(signal_row("S3_regrid", "cmip6_inputs", var, s3_hi, s3_fi, mask_2d, None))
 
-        all_rows.append(signal_row("S3_regrid", "cmip6_inputs", var, s3_hist, s3_fut, mask_2d, None))
-
-        if s2_pair is not None:
+        if suite == gs.SUITE_GRIDMET_4KM and s2_pair is not None:
             h2, f2 = s2_pair
             _, d_s2 = spatial_delta_maps(h2, f2, var)
             try:
@@ -200,31 +221,86 @@ def run_signal_analysis(
                     }
                 )
 
-        loca_h = loca_f = None
-        if var in ("pr", "tasmax", "tasmin"):
-            try:
-                loca_h, _ = load_loca_on_grid(
-                    var, lat_tgt, lon_tgt, scenario="historical", time_start=hist_s, time_end=hist_e
-                )
-                loca_f, _ = load_loca_on_grid(
-                    var, lat_tgt, lon_tgt, scenario="ssp585", time_start=fut_s, time_end=fut_e
-                )
-                all_rows.append(signal_row("external", "LOCA2", var, loca_h, loca_f, mask_2d, None))
-            except (FileNotFoundError, OSError, ValueError) as e:
-                print(f"  LOCA2 skip {var}: {e}")
+        if suite == gs.SUITE_GRIDMET_4KM:
+            loca_h = loca_f = None
+            if var in ("pr", "tasmax", "tasmin"):
+                try:
+                    loca_h, _ = load_loca_on_grid(
+                        var, lat_tgt, lon_tgt, scenario="historical", time_start=hist_s, time_end=hist_e
+                    )
+                    loca_f, _ = load_loca_on_grid(
+                        var, lat_tgt, lon_tgt, scenario="ssp585", time_start=fut_s, time_end=fut_e
+                    )
+                    all_rows.append(signal_row("external", "LOCA2", var, loca_h, loca_f, mask_2d, None))
+                except (FileNotFoundError, OSError, ValueError) as e:
+                    print(f"  LOCA2 skip {var}: {e}")
 
-        try:
-            y0, y1 = int(hist_s[:4]), int(hist_e[:4])
-            nex_h, _ = load_nex_on_grid(
-                var, lat_tgt, lon_tgt, scenario="historical", year_start=y0, year_end=y1
-            )
-            y2, y3 = int(fut_s[:4]), int(fut_e[:4])
-            nex_f, _ = load_nex_on_grid(
-                var, lat_tgt, lon_tgt, scenario="ssp585", year_start=y2, year_end=y3
-            )
-            all_rows.append(signal_row("external", "NEX", var, nex_h, nex_f, mask_2d, None))
-        except (FileNotFoundError, OSError) as e:
-            print(f"  NEX skip {var}: {e}")
+            try:
+                y0, y1 = int(hist_s[:4]), int(hist_e[:4])
+                nex_h, _ = load_nex_on_grid(
+                    var, lat_tgt, lon_tgt, scenario="historical", year_start=y0, year_end=y1
+                )
+                y2, y3 = int(fut_s[:4]), int(fut_e[:4])
+                nex_f, _ = load_nex_on_grid(
+                    var, lat_tgt, lon_tgt, scenario="ssp585", year_start=y2, year_end=y3
+                )
+                all_rows.append(signal_row("external", "NEX", var, nex_h, nex_f, mask_2d, None))
+            except (FileNotFoundError, OSError) as e:
+                print(f"  NEX skip {var}: {e}")
+        elif suite == gs.SUITE_LOCA2_NATIVE:
+            if var in ("pr", "tasmax", "tasmin"):
+                try:
+                    loca_h, _, _, _ = load_loca_native(
+                        var, lat_tgt, lon_tgt, scenario="historical", time_start=hist_s, time_end=hist_e
+                    )
+                    loca_f, _, _, _ = load_loca_native(
+                        var, lat_tgt, lon_tgt, scenario="ssp585", time_start=fut_s, time_end=fut_e
+                    )
+                    all_rows.append(signal_row("external", "LOCA2", var, loca_h, loca_f, mask_2d, None))
+                except (FileNotFoundError, OSError, ValueError) as e:
+                    print(f"  LOCA2 skip {var}: {e}")
+            try:
+                y0, y1 = int(hist_s[:4]), int(hist_e[:4])
+                nex_h, _, nla, nlo = load_nex_native(
+                    var, lat_tgt, lon_tgt, scenario="historical", year_start=y0, year_end=y1
+                )
+                y2, y3 = int(fut_s[:4]), int(fut_e[:4])
+                nex_f, _, _, _ = load_nex_native(
+                    var, lat_tgt, lon_tgt, scenario="ssp585", year_start=y2, year_end=y3
+                )
+                assert eval_LAT is not None
+                nh = interp_curvilinear_stack_to_target(nex_h, nla, nlo, eval_LAT, eval_LON)
+                nf = interp_curvilinear_stack_to_target(nex_f, nla, nlo, eval_LAT, eval_LON)
+                all_rows.append(signal_row("external", "NEX", var, nh, nf, mask_2d, None))
+            except (FileNotFoundError, OSError) as e:
+                print(f"  NEX skip {var}: {e}")
+        else:
+            if var in ("pr", "tasmax", "tasmin"):
+                try:
+                    loca_h, _, la1, lo1 = load_loca_native(
+                        var, lat_tgt, lon_tgt, scenario="historical", time_start=hist_s, time_end=hist_e
+                    )
+                    loca_f, _, la2, lo2 = load_loca_native(
+                        var, lat_tgt, lon_tgt, scenario="ssp585", time_start=fut_s, time_end=fut_e
+                    )
+                    assert eval_LAT is not None
+                    lh = interp_curvilinear_stack_to_target(loca_h, la1, lo1, eval_LAT, eval_LON)
+                    lf = interp_curvilinear_stack_to_target(loca_f, la2, lo2, eval_LAT, eval_LON)
+                    all_rows.append(signal_row("external", "LOCA2", var, lh, lf, mask_2d, None))
+                except (FileNotFoundError, OSError, ValueError) as e:
+                    print(f"  LOCA2 skip {var}: {e}")
+            try:
+                y0, y1 = int(hist_s[:4]), int(hist_e[:4])
+                nex_h, _, _, _ = load_nex_native(
+                    var, lat_tgt, lon_tgt, scenario="historical", year_start=y0, year_end=y1
+                )
+                y2, y3 = int(fut_s[:4]), int(fut_e[:4])
+                nex_f, _, _, _ = load_nex_native(
+                    var, lat_tgt, lon_tgt, scenario="ssp585", year_start=y2, year_end=y3
+                )
+                all_rows.append(signal_row("external", "NEX", var, nex_h, nex_f, mask_2d, None))
+            except (FileNotFoundError, OSError) as e:
+                print(f"  NEX skip {var}: {e}")
 
         if skip_dor:
             continue
@@ -252,8 +328,15 @@ def run_signal_analysis(
                 print(f"  DOR skip {pid} {var}: {e}")
                 continue
 
-            all_rows.append(signal_row("S4_dor", "DOR", var, dor_h, dor_f, mask_2d, pid))
-            _, ddor = spatial_delta_maps(dor_h, dor_f, var)
+            if suite == gs.SUITE_GRIDMET_4KM:
+                all_rows.append(signal_row("S4_dor", "DOR", var, dor_h, dor_f, mask_2d, pid))
+                _, ddor = spatial_delta_maps(dor_h, dor_f, var)
+            else:
+                assert eval_LAT is not None and eval_LON is not None
+                dor_hi = interp_gridmet_stack_to_target(dor_h, lat_tgt, lon_tgt, eval_LAT, eval_LON)
+                dor_fi = interp_gridmet_stack_to_target(dor_f, lat_tgt, lon_tgt, eval_LAT, eval_LON)
+                all_rows.append(signal_row("S4_dor", "DOR", var, dor_hi, dor_fi, mask_2d, pid))
+                _, ddor = spatial_delta_maps(dor_hi, dor_fi, var)
             pr = preservation_metrics(ds3, ddor, mask_2d)
             pres_rows.append(
                 {
@@ -270,13 +353,19 @@ def run_signal_analysis(
                 try:
                     dfu_u, ddf_u = load_dor_future_npz(dor_dir, var, shuffled=False)
                     dor_f_u = _slice_by_dates(dfu_u, ddf_u, fut_s, fut_e)
+                    if suite == gs.SUITE_GRIDMET_4KM:
+                        h_row, f_row = dor_h, dor_f_u
+                    else:
+                        assert eval_LAT is not None and eval_LON is not None
+                        h_row = interp_gridmet_stack_to_target(dor_h, lat_tgt, lon_tgt, eval_LAT, eval_LON)
+                        f_row = interp_gridmet_stack_to_target(dor_f_u, lat_tgt, lon_tgt, eval_LAT, eval_LON)
                     all_rows.append(
                         signal_row(
                             "S4_dor",
                             "DOR_SSP585_unshuffled",
                             var,
-                            dor_h,
-                            dor_f_u,
+                            h_row,
+                            f_row,
                             mask_2d,
                             pid,
                         )
@@ -323,6 +412,11 @@ def run_signal_analysis(
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Climate signal by stage (S1–S4, LOCA2, NEX)")
+    p.add_argument(
+        "--suite",
+        default=gs.SUITE_GRIDMET_4KM,
+        help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
+    )
     p.add_argument("--skip-dor", action="store_true", help="Only S3 + externals (no DOR NPZs)")
     p.add_argument(
         "--include-unshuffled-s4",
@@ -331,22 +425,28 @@ def main() -> int:
     )
     args = p.parse_args()
 
-    cfg.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    os.environ["DOR_BENCHMARK_SUITE"] = args.suite.strip()
+    suite = gs.benchmark_suite()
+    out_root = gs.suite_output_dir(suite)
+    out_root.mkdir(parents=True, exist_ok=True)
+
     df_sig, df_pres, df_bc, df_tier, df_phys = run_signal_analysis(
         skip_dor=args.skip_dor,
         include_unshuffled_s4=args.include_unshuffled_s4,
+        suite=suite,
     )
 
-    out1 = cfg.OUTPUT_DIR / "climate_signal_by_stage.csv"
-    out2 = cfg.OUTPUT_DIR / "climate_signal_preservation.csv"
+    suf = "" if suite == gs.SUITE_GRIDMET_4KM else f"_{suite}"
+    out1 = out_root / f"climate_signal_by_stage{suf}.csv"
+    out2 = out_root / f"climate_signal_preservation{suf}.csv"
     df_sig.to_csv(out1, index=False)
     df_pres.to_csv(out2, index=False)
     print(df_sig.to_string(index=False))
     print(f"\nWrote {out1}\nWrote {out2}")
 
-    p_bc = cfg.OUTPUT_DIR / "climate_signal_bc_delta.csv"
-    p_tb = cfg.OUTPUT_DIR / "climate_signal_tier_b.csv"
-    p_ph = cfg.OUTPUT_DIR / "climate_signal_physics_coarse.csv"
+    p_bc = out_root / f"climate_signal_bc_delta{suf}.csv"
+    p_tb = out_root / f"climate_signal_tier_b{suf}.csv"
+    p_ph = out_root / f"climate_signal_physics_coarse{suf}.csv"
     df_bc.to_csv(p_bc, index=False)
     df_tier.to_csv(p_tb, index=False)
     df_phys.to_csv(p_ph, index=False)

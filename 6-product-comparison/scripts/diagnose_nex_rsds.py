@@ -1,18 +1,22 @@
 """
-Pin down NEX-GDDP rsds vs GridMET srad mean bias (Iowa, 2006-2014).
+Pin down NEX-GDDP rsds vs GridMET srad mean bias (Iowa, 2006–2014).
 
-Writes under product-comparison/output/:
+Writes under suite output root (`output/` for gridmet_4km, else `output/suites/<suite>/`):
   - nex_rsds_metadata.txt
   - nex_rsds_bias_monthly.csv
   - nex_rsds_bias_by_obs_quartile.csv
-  - nex_rsds_bias_native_vs_targetgrid.csv
+  - nex_rsds_bias_native_vs_targetgrid.json
   - figures/nex_rsds_bias_map_targetgrid.png
   - figures/nex_rsds_monthly_bias.png
   - figures/nex_rsds_domain_mean_timeseries.png
+
+Use `--suite gridmet_4km` (default) or `nex_native`. LOCA2 native suite is skipped (no NEX on LOCA grid).
 """
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -27,7 +31,8 @@ for _p in (SCRIPTS, PC_ROOT):
         sys.path.insert(0, str(_p))
 
 import config as cfg
-from align import align_to_obs_with_dates
+import grid_suites as gs
+from benchmark_io import load_aligned_stacks
 from grid_target import load_target_grid
 from load_nex import load_nex_on_grid
 from load_obs import load_obs_validation
@@ -53,22 +58,17 @@ def _write_metadata(out_dir: Path) -> None:
         lines.append(f"rsds attrs: {dict(ds.rsds.attrs)}\n")
         lines.append(f"global attrs (subset): { {k: ds.attrs.get(k) for k in list(ds.attrs)[:12]} }\n")
 
-    z = np.load(cfg.CROPPED_GRIDMET / "Cropped_srad_2006.npz")
-    lines.append(f"\nGridMET NPZ: Cropped_srad_2006.npz keys {z.files}\n")
-    if "data" in z.files:
-        lines.append(f"GridMET srad sample mean (2006 daily): {float(np.nanmean(z['data']))}\n")
+    gm_srad = cfg.CROPPED_GRIDMET / "Cropped_srad_2006.npz"
+    if gm_srad.is_file():
+        z = np.load(gm_srad)
+        lines.append(f"\nGridMET NPZ: Cropped_srad_2006.npz keys {z.files}\n")
+        if "data" in z.files:
+            lines.append(f"GridMET srad sample mean (2006 daily): {float(np.nanmean(z['data']))}\n")
+    else:
+        lines.append(f"\nGridMET NPZ missing (optional for metadata): {gm_srad}\n")
     out = out_dir / "nex_rsds_metadata.txt"
     out.write_text("".join(lines), encoding="utf-8")
     print(f"Wrote {out}")
-
-
-def _bias_on_target_grid() -> tuple[np.ndarray, np.ndarray, np.ndarray, pd.DatetimeIndex]:
-    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
-    obs, obs_dates = load_obs_validation("rsds")
-    nex, nt = load_nex_on_grid("rsds", lat_tgt, lon_tgt)
-    n_a, o_a, dates = align_to_obs_with_dates(nex, nt, obs, obs_dates)
-    diff = n_a - o_a
-    return diff, o_a, n_a, dates
 
 
 def _bias_native_grid() -> float:
@@ -130,13 +130,35 @@ def _bias_native_grid() -> float:
 
 
 def main() -> int:
-    cfg.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    fig_dir = cfg.OUTPUT_DIR / "figures"
+    ap = argparse.ArgumentParser(description="NEX rsds vs GridMET srad diagnostics")
+    ap.add_argument(
+        "--suite",
+        default=os.environ.get("DOR_BENCHMARK_SUITE", gs.SUITE_GRIDMET_4KM),
+        help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
+    )
+    args = ap.parse_args()
+    suite = args.suite.strip().lower()
+    if suite not in gs.VALID_SUITES:
+        print(f"Invalid suite {suite!r}; expected one of {sorted(gs.VALID_SUITES)}")
+        return 1
+    if suite == gs.SUITE_LOCA2_NATIVE:
+        print("Skipping NEX rsds diagnostic on LOCA2 native suite (NEX not defined on LOCA grid).")
+        return 0
+
+    os.environ["DOR_BENCHMARK_SUITE"] = suite
+    out_root = gs.suite_output_dir(suite)
+    out_root.mkdir(parents=True, exist_ok=True)
+    fig_dir = out_root / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
 
-    _write_metadata(cfg.OUTPUT_DIR)
+    _write_metadata(out_root)
 
-    diff, obs_a, nex_a, dates = _bias_on_target_grid()
+    st = load_aligned_stacks("rsds", suite=suite)
+    diff = np.asarray(st.nex, dtype=np.float64) - np.asarray(st.obs, dtype=np.float64)
+    obs_a = np.asarray(st.obs, dtype=np.float64)
+    nex_a = np.asarray(st.nex, dtype=np.float64)
+    dates = st.dates
+
     pooled_bias = float(np.nanmean(diff))
     pooled_rmse = float(np.sqrt(np.nanmean(diff**2)))
     obs_mean = float(np.nanmean(obs_a))
@@ -157,7 +179,7 @@ def main() -> int:
         bias_std=("domain_mean_diff", "std"),
         n_days=("domain_mean_diff", "count"),
     ).reset_index()
-    mp = cfg.OUTPUT_DIR / "nex_rsds_bias_monthly.csv"
+    mp = out_root / "nex_rsds_bias_monthly.csv"
     monthly.to_csv(mp, index=False)
     print(f"Wrote {mp}")
 
@@ -184,20 +206,21 @@ def main() -> int:
             }
         )
     qdf = pd.DataFrame(rows)
-    qp = cfg.OUTPUT_DIR / "nex_rsds_bias_by_obs_quartile.csv"
+    qp = out_root / "nex_rsds_bias_by_obs_quartile.csv"
     qdf.to_csv(qp, index=False)
     print(f"Wrote {qp}")
 
-    native_bias = _bias_native_grid()
+    native_bias = _bias_native_grid() if suite == gs.SUITE_GRIDMET_4KM else float("nan")
     summary = {
-        "pooled_mean_bias_Wm2_target_grid": pooled_bias,
-        "pooled_rmse_Wm2_target_grid": pooled_rmse,
+        "benchmark_suite": suite,
+        "pooled_mean_bias_Wm2_evaluation_grid": pooled_bias,
+        "pooled_rmse_Wm2_evaluation_grid": pooled_rmse,
         "mean_obs_Wm2": obs_mean,
         "mean_nex_Wm2": nex_mean,
         "relative_bias_pct_of_obs_mean": 100.0 * pooled_bias / (obs_mean + 1e-9),
-        "pooled_mean_bias_Wm2_native_nex_grid": native_bias,
+        "pooled_mean_bias_Wm2_native_nex_grid_minus_interp_obs": native_bias,
     }
-    sp = cfg.OUTPUT_DIR / "nex_rsds_bias_native_vs_targetgrid.json"
+    sp = out_root / "nex_rsds_bias_native_vs_targetgrid.json"
     sp.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(f"Wrote {sp}")
     print(json.dumps(summary, indent=2))
@@ -214,7 +237,7 @@ def main() -> int:
     vmax = max(vmax, 1.0)
     fig, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(bias_map, origin="upper", cmap="RdBu_r", vmin=-vmax, vmax=vmax)
-    ax.set_title("Mean NEX − GridMET srad (W m⁻²), 2006–2014")
+    ax.set_title(f"Mean NEX − GridMET srad (W m⁻²), 2006–2014 ({gs.suite_label_for_titles(suite)})")
     plt.colorbar(im, ax=ax, label="W m⁻²")
     fp = fig_dir / "nex_rsds_bias_map_targetgrid.png"
     fig.savefig(fp, dpi=150, bbox_inches="tight")
@@ -227,7 +250,7 @@ def main() -> int:
     ax.set_xticks(range(1, 13))
     ax.set_xlabel("Month")
     ax.set_ylabel("Mean domain (NEX − obs) W m⁻²")
-    ax.set_title("Monthly mean bias (target grid)")
+    ax.set_title(f"Monthly mean bias (evaluation grid, {suite})")
     fig.tight_layout()
     fp2 = fig_dir / "nex_rsds_monthly_bias.png"
     fig.savefig(fp2, dpi=150)
@@ -239,7 +262,7 @@ def main() -> int:
     ax.plot(dfm["date"], dfm["domain_mean_nex"], label="NEX domain mean", alpha=0.7, lw=0.8)
     ax.set_ylabel("W m⁻²")
     ax.legend()
-    ax.set_title("Domain-mean daily shortwave: GridMET vs NEX (Iowa crop)")
+    ax.set_title(f"Domain-mean daily shortwave: GridMET vs NEX ({suite})")
     fig.tight_layout()
     fp3 = fig_dir / "nex_rsds_domain_mean_timeseries.png"
     fig.savefig(fp3, dpi=150)

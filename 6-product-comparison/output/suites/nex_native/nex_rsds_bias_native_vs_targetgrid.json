@@ -1,0 +1,9 @@
+{
+  "benchmark_suite": "nex_native",
+  "pooled_mean_bias_Wm2_evaluation_grid": 36.6297325928206,
+  "pooled_rmse_Wm2_evaluation_grid": 68.76933079486943,
+  "mean_obs_Wm2": 175.34767686826572,
+  "mean_nex_Wm2": 212.03508041838867,
+  "relative_bias_pct_of_obs_mean": 20.889773532688828,
+  "pooled_mean_bias_Wm2_native_nex_grid_minus_interp_obs": NaN
+}

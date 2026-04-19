@@ -3,7 +3,8 @@ _test8_sd_impl.py — Shared implementation for Drops of Resilience spatial down
 
 Run via **`test8_v2.py`** (Bhuwan-parity-oriented defaults; optional PR intensity via env) or
 **`test8_v3.py`** (PR intensity path; default `PR_WDF_THRESHOLD_FACTOR=1.15`) or
-**`test8_v4.py`** (tuned wet-day threshold, default `PR_WDF_THRESHOLD_FACTOR=1.65`).
+**`test8_v4.py`** (tuned wet-day threshold, default `PR_WDF_THRESHOLD_FACTOR=1.65`) or
+**`test8_attempt2_pr_splotch_blend0p62_dor_ratio_smooth_sigma1p0.py`** (archived splotch experiment; see `9-fix-pr-splotchiness-attempt-2/`).
 Set `DOR_PIPELINE_ID` before import, or launch those entry points.
 
 Upstream: fork of Bhuwan's server `test8_v2.py` (see TEST8_V2_SERVER_SOURCE).
@@ -14,7 +15,7 @@ Env:
   TEST8_SEED=<int>           — optional; if set, fixes RNG for reproducibility vs published v2 may differ
   DOR_PIPELINE_ROOT — optional absolute path to experiment root (folder with scripts/, data/, output/)
   DOR_TEST8_V2_PR_INTENSITY_ROOT — legacy alias for DOR_PIPELINE_ROOT
-  DOR_PIPELINE_ID — internal: `test8_v2` | `test8_v3` | `test8_v4` (normally set by test8_v*.py entry points)
+  DOR_PIPELINE_ID — internal: `test8_v2` | `test8_v3` | `test8_v4` | `test8_pr_tex_att2_b062_rs1` (archived attempt script only)
   DOR_TEST8_PR_DATA_DIR     — optional override for memmap directory (default: <root>/data)
   PR_INTENSITY_BLEND       — float in [0, 2], default 1.0; scales (ratio_ext - ratio) * weight when PR_USE_INTENSITY_RATIO=1
   PR_INTENSITY_OUT_TAG     — optional suffix for experiment output subdir (alphanumeric, _, -) to avoid overwriting during sweeps
@@ -74,9 +75,9 @@ TEST8_V2_SERVER_LASTWRITE_ISO = "2026-03-30T11:43:15-05:00"
 
 
 def _pipeline_id() -> str:
-    """`test8_v2` | `test8_v3` | `test8_v4` — set by entry-point scripts or DOR_PIPELINE_ID."""
+    """`test8_v2` | `test8_v3` | `test8_v4` | `test8_pr_tex_att2_b062_rs1` (archived) — set by entry-point scripts or DOR_PIPELINE_ID."""
     pid = os.environ.get("DOR_PIPELINE_ID", "test8_v4").strip() or "test8_v4"
-    if pid not in ("test8_v2", "test8_v3", "test8_v4"):
+    if pid not in ("test8_v2", "test8_v3", "test8_v4", "test8_pr_tex_att2_b062_rs1"):
         return "test8_v4"
     return pid
 
@@ -142,7 +143,7 @@ DOR_RATIO_SMOOTH_SIGMA = _parse_ratio_smooth_sigma()
 
 
 def _default_pr_wdf_str() -> str:
-    """test8_v3: legacy WDF scale; test8_v2 and test8_v4: 1.65 (Bhuwan Iowa tuning; see 8-WDF-overprediction-fix/)."""
+    """test8_v3: legacy WDF scale; test8_v2/v4 (+ archived att2 pipeline id): 1.65 (see 8-WDF-overprediction-fix/)."""
     return "1.15" if _PIPELINE_ID == "test8_v3" else "1.65"
 
 

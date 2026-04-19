@@ -62,7 +62,8 @@ def load_dor_main_npz(dor_dir: Path, var: str) -> tuple[np.ndarray, pd.DatetimeI
     if not p.is_file():
         raise FileNotFoundError(p)
     z = np.load(p)
-    return np.asarray(z["data"], dtype=np.float64), pd.to_datetime(z["dates"])
+    # float32: full-window (T,H,W) at float64 can exceed RAM when other suites run in parallel
+    return np.asarray(z["data"], dtype=np.float32), pd.to_datetime(z["dates"])
 
 
 def load_dor_future_npz(dor_dir: Path, var: str, *, shuffled: bool = True) -> tuple[np.ndarray, pd.DatetimeIndex]:
@@ -71,7 +72,7 @@ def load_dor_future_npz(dor_dir: Path, var: str, *, shuffled: bool = True) -> tu
     if not p.is_file():
         raise FileNotFoundError(p)
     z = np.load(p)
-    return np.asarray(z["data"], dtype=np.float64), pd.to_datetime(z["dates"])
+    return np.asarray(z["data"], dtype=np.float32), pd.to_datetime(z["dates"])
 
 
 def pooled_ext99(a: np.ndarray) -> float:

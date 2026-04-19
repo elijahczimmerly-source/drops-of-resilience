@@ -15,6 +15,8 @@ Defaults match product-comparison expectations:
   - v3  → output/test8_v3/experiment_blend0p65/  (PR_USE_INTENSITY_RATIO=1, blend 0.65, WDF 1.15)
   - v4  → output/test8_v4/experiment_blend0p65/  (PR_USE_INTENSITY_RATIO=1, blend 0.65, WDF 1.65)
 
+Archived blend+ratio-smooth attempt (not in this batch): ``test8_attempt2_pr_splotch_blend0p62_dor_ratio_smooth_sigma1p0.py``.
+
 Use TEST8_MAIN_PERIOD_ONLY=0 for SSP585 future NPZs (slow; required for full climate-signal S4).
 """
 from __future__ import annotations

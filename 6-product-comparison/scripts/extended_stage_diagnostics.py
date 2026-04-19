@@ -1,6 +1,8 @@
 """Extended per-product diagnostics on the validation window (2006–2014): variance, tails, WDF, lag-1, seasonality."""
 from __future__ import annotations
 
+import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -14,6 +16,7 @@ for _p in (SCRIPTS, PC_ROOT):
         sys.path.insert(0, str(_p))
 
 import config as cfg
+import grid_suites as gs
 from benchmark_io import LOCA_VARS, load_multi_product_validation
 from metrics import calculate_pooled_metrics
 
@@ -78,13 +81,19 @@ def _cv(a: np.ndarray) -> float:
 
 
 def main() -> int:
-    cfg.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser(description="Extended validation-window diagnostics per product")
+    ap.add_argument("--suite", default=gs.SUITE_GRIDMET_4KM, help="DOR_BENCHMARK_SUITE")
+    args = ap.parse_args()
+    os.environ["DOR_BENCHMARK_SUITE"] = str(args.suite).strip()
+    suite = gs.benchmark_suite()
+    out_root = gs.suite_output_dir(suite)
+    out_root.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
     window = "validation_2006_2014"
 
     for var in cfg.VARS:
         try:
-            st = load_multi_product_validation(var)
+            st = load_multi_product_validation(var, suite=suite)
         except Exception as e:
             rows.append(
                 {
@@ -168,7 +177,7 @@ def main() -> int:
             add_row("DOR", pid, "KGE_vs_GridMET", m.get("Val_KGE", float("nan")))
 
         # LOCA2
-        if st.loca2 is not None:
+        if st.loca2 is not None and np.any(np.isfinite(st.loca2)):
             loca = st.loca2
             dm = np.nanmean(loca, axis=(1, 2))
             p1, p99 = _pooled_p01_p99(loca)
@@ -190,7 +199,7 @@ def main() -> int:
             add_row("LOCA2", "", "pooled_variance", float("nan"), st.missing.get("loca2", "missing"))
 
         # NEX
-        if st.nex is not None:
+        if st.nex is not None and np.any(np.isfinite(st.nex)):
             nex = st.nex
             dm = np.nanmean(nex, axis=(1, 2))
             p1, p99 = _pooled_p01_p99(nex)
@@ -210,7 +219,8 @@ def main() -> int:
             add_row("NEX", "", "pooled_variance", float("nan"), st.missing.get("nex", "missing"))
 
     df = pd.DataFrame(rows)
-    out = cfg.OUTPUT_DIR / "stage_diagnostics_extended.csv"
+    suf = "" if suite == gs.SUITE_GRIDMET_4KM else f"_{suite}"
+    out = out_root / f"stage_diagnostics_extended{suf}.csv"
     df.to_csv(out, index=False)
     print(df.head(40).to_string(index=False))
     print(f"\nWrote {out} ({len(df)} rows)")

@@ -8,6 +8,7 @@ Outputs (under config.FIG_4KM_PLOTS):
   hist_1981_2014/   — time-mean, seasonal, snapshots, domain-mean TS
   validation_2006_2014/ — same figure families for benchmark window
   For pr only: under each of the above, pr/ holds domain-mean TS + timemean; pr/seasonal/ and pr/snapshot/.
+  For other variables, those PNGs sit directly under hist_1981_2014/ and validation_2006_2014/ (not in a subfolder).
   delta_future_minus_hist/ — S3, DOR×pipelines, LOCA2, NEX (future minus historical)
   index.html — links to generated PNGs
 """
@@ -16,6 +17,7 @@ from __future__ import annotations
 import argparse
 import gc
 import html
+import os
 import sys
 from pathlib import Path
 
@@ -33,15 +35,13 @@ for _p in (SCRIPTS, PC_ROOT):
         sys.path.insert(0, str(_p))
 
 import config as cfg
+import grid_suites as gs
 from benchmark_io import MultiProductStacks, load_multi_product_historical, load_multi_product_validation
 from climate_signal_io import load_cmip6_variable, load_dor_future_npz, load_dor_main_npz, spatial_delta_maps
 from grid_target import load_target_grid
-from load_loca2 import load_loca_on_grid
-from load_nex import load_nex_on_grid
-
-FIG_HIST = cfg.FIG_4KM_PLOTS / "hist_1981_2014"
-FIG_VAL = cfg.FIG_4KM_PLOTS / "validation_2006_2014"
-FIG_DELTA = cfg.FIG_4KM_PLOTS / "delta_future_minus_hist"
+from interp_from_gridmet_stack import interp_curvilinear_stack_to_target, interp_gridmet_stack_to_target
+from load_loca2 import get_loca_validation_mesh, load_loca_native, load_loca_on_grid
+from load_nex import get_nex_validation_mesh, load_nex_native, load_nex_on_grid
 
 DOR_PIDS = ("test8_v2", "test8_v3", "test8_v4")
 
@@ -80,11 +80,23 @@ def _panels_from_stack(st: MultiProductStacks, var: str) -> list[tuple[str, np.n
     for pid in DOR_PIDS:
         if pid in st.dor:
             out.append((f"DOR {pid}", st.dor[pid]))
-    if st.loca2 is not None:
+    if st.loca2 is not None and np.any(np.isfinite(st.loca2)):
         out.append(("LOCA2", st.loca2))
-    if st.nex is not None:
+    if st.nex is not None and np.any(np.isfinite(st.nex)):
         out.append(("NEX", st.nex))
     return out
+
+
+def _figure_roots(suite: str) -> tuple[Path, Path, Path, Path]:
+    """hist_dir, val_dir, delta_dir, plots_style_root (parent of hist/val/delta)."""
+    r = gs.suite_fig_4km_style_root(suite)
+    r.mkdir(parents=True, exist_ok=True)
+    return (
+        r / "hist_1981_2014",
+        r / "validation_2006_2014",
+        r / "delta_future_minus_hist",
+        r,
+    )
 
 
 def _day_index(dates: pd.DatetimeIndex, day_str: str) -> int | None:
@@ -229,10 +241,10 @@ def _hist_val_out_dirs(base: Path, var: str) -> tuple[Path, Path, Path]:
     return root, root / "seasonal", root / "snapshot"
 
 
-def run_hist_plots(var: str) -> None:
-    st = load_multi_product_historical(var)
+def run_hist_plots(var: str, suite: str, fig_hist: Path) -> None:
+    st = load_multi_product_historical(var, suite=suite)
     suf = "1981_2014"
-    root, seasonal_dir, snapshot_dir = _hist_val_out_dirs(FIG_HIST, var)
+    root, seasonal_dir, snapshot_dir = _hist_val_out_dirs(fig_hist, var)
     plot_domain_mean_ts(st, var, "1981–2014 full overlap", root, suf)
     plot_time_mean_maps(st, var, "1981–2014", root, suf)
     plot_seasonal_grids(st, var, "1981–2014", seasonal_dir, suf)
@@ -242,10 +254,10 @@ def run_hist_plots(var: str) -> None:
     plot_snapshot_days(st, var, "1981–2014", snapshot_dir, suf, fixed)
 
 
-def run_val_plots(var: str) -> None:
-    st = load_multi_product_validation(var)
+def run_val_plots(var: str, suite: str, fig_val: Path) -> None:
+    st = load_multi_product_validation(var, suite=suite)
     suf = "2006_2014"
-    root, seasonal_dir, snapshot_dir = _hist_val_out_dirs(FIG_VAL, var)
+    root, seasonal_dir, snapshot_dir = _hist_val_out_dirs(fig_val, var)
     plot_domain_mean_ts(st, var, "validation 2006–2014", root, suf)
     plot_time_mean_maps(st, var, "validation 2006–2014", root, suf)
     plot_seasonal_grids(st, var, "validation 2006–2014", seasonal_dir, suf)
@@ -255,7 +267,13 @@ def run_val_plots(var: str) -> None:
     plot_snapshot_days(st, var, "validation 2006–2014", snapshot_dir, suf, fixed)
 
 
-def _delta_panels(var: str) -> list[tuple[str, np.ndarray]]:
+def _delta_panels_dispatch(var: str, suite: str) -> list[tuple[str, np.ndarray]]:
+    if suite == gs.SUITE_GRIDMET_4KM:
+        return _delta_panels_gridmet(var)
+    return _delta_panels_native(var, suite)
+
+
+def _delta_panels_gridmet(var: str) -> list[tuple[str, np.ndarray]]:
     lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
     hist_s, hist_e = cfg.SIGNAL_HIST_START, cfg.SIGNAL_HIST_END
     fut_s, fut_e = cfg.SIGNAL_FUT_START, cfg.SIGNAL_FUT_END
@@ -313,6 +331,101 @@ def _delta_panels(var: str) -> list[tuple[str, np.ndarray]]:
     return panels
 
 
+def _delta_panels_native(var: str, suite: str) -> list[tuple[str, np.ndarray]]:
+    """Δ maps on LOCA2 or NEX native evaluation grid (S3/DOR interpolated; externals native or cross-interp)."""
+    lat_tgt, lon_tgt = load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
+    hist_s, hist_e = cfg.SIGNAL_HIST_START, cfg.SIGNAL_HIST_END
+    fut_s, fut_e = cfg.SIGNAL_FUT_START, cfg.SIGNAL_FUT_END
+    panels: list[tuple[str, np.ndarray]] = []
+
+    if suite == gs.SUITE_LOCA2_NATIVE:
+        LAT2, LON2 = get_loca_validation_mesh(lat_tgt, lon_tgt)
+    elif suite == gs.SUITE_NEX_NATIVE:
+        LAT2, LON2 = get_nex_validation_mesh(lat_tgt, lon_tgt)
+    else:
+        return panels
+
+    if not cfg.CMIP6_HIST_DAT.is_file() or not cfg.CMIP6_FUTURE_DAT.is_file():
+        print("  Δ maps: skip S3 (missing CMIP6 memmaps)")
+    else:
+        h, _ = load_cmip6_variable(cfg.CMIP6_HIST_DAT, var, hist_s, hist_e)
+        f, _ = load_cmip6_variable(cfg.CMIP6_FUTURE_DAT, var, fut_s, fut_e)
+        hi = interp_gridmet_stack_to_target(h, lat_tgt, lon_tgt, LAT2, LON2)
+        fi = interp_gridmet_stack_to_target(f, lat_tgt, lon_tgt, LAT2, LON2)
+        _, dmap = spatial_delta_maps(hi, fi, var)
+        panels.append(("S3 cmip6_inputs Δ", dmap))
+
+    for pid in DOR_PIDS:
+        root = cfg.DOR_DEFAULT_OUTPUTS.get(pid)
+        if root is None:
+            continue
+        try:
+            dh, dd = load_dor_main_npz(root, var)
+            dfu, ddf = load_dor_future_npz(root, var, shuffled=True)
+            m0 = (dd >= pd.Timestamp(hist_s)) & (dd <= pd.Timestamp(hist_e))
+            m1 = (ddf >= pd.Timestamp(fut_s)) & (ddf <= pd.Timestamp(fut_e))
+            hi = interp_gridmet_stack_to_target(dh[m0], lat_tgt, lon_tgt, LAT2, LON2)
+            fi = interp_gridmet_stack_to_target(dfu[m1], lat_tgt, lon_tgt, LAT2, LON2)
+            _, dmap = spatial_delta_maps(hi, fi, var)
+            panels.append((f"DOR {pid} Δ", dmap))
+        except FileNotFoundError as e:
+            print(f"  DOR Δ skip {pid}: {e}")
+
+    if var in ("pr", "tasmax", "tasmin"):
+        try:
+            if suite == gs.SUITE_LOCA2_NATIVE:
+                loca_h, _, _, _ = load_loca_native(
+                    var, lat_tgt, lon_tgt, scenario="historical", time_start=hist_s, time_end=hist_e
+                )
+                loca_f, _, _, _ = load_loca_native(
+                    var, lat_tgt, lon_tgt, scenario="ssp585", time_start=fut_s, time_end=fut_e
+                )
+                _, dmap = spatial_delta_maps(loca_h, loca_f, var)
+                panels.append(("LOCA2 Δ", dmap))
+            else:
+                y0, y1 = int(hist_s[:4]), int(hist_e[:4])
+                loca_h, _, la_h, lo_h = load_loca_native(
+                    var, lat_tgt, lon_tgt, scenario="historical", time_start=hist_s, time_end=hist_e
+                )
+                y2, y3 = int(fut_s[:4]), int(fut_e[:4])
+                loca_f, _, la_f, lo_f = load_loca_native(
+                    var, lat_tgt, lon_tgt, scenario="ssp585", time_start=fut_s, time_end=fut_e
+                )
+                # align spatial grids if needed
+                if la_h.shape == la_f.shape and np.allclose(la_h, la_f):
+                    _, dmap = spatial_delta_maps(loca_h, loca_f, var)
+                    dloc = interp_curvilinear_stack_to_target(
+                        dmap[np.newaxis, ...], la_h, lo_h, LAT2, LON2
+                    )[0]
+                    panels.append(("LOCA2 Δ (on NEX grid)", dloc))
+        except (FileNotFoundError, OSError, ValueError) as e:
+            print(f"  LOCA2 Δ skip: {e}")
+
+    try:
+        y0, y1 = int(hist_s[:4]), int(hist_e[:4])
+        nex_h, _, _, _ = load_nex_native(
+            var, lat_tgt, lon_tgt, scenario="historical", year_start=y0, year_end=y1
+        )
+        y2, y3 = int(fut_s[:4]), int(fut_e[:4])
+        nex_f, _, _, _ = load_nex_native(
+            var, lat_tgt, lon_tgt, scenario="ssp585", year_start=y2, year_end=y3
+        )
+        if suite == gs.SUITE_NEX_NATIVE:
+            _, dmap = spatial_delta_maps(nex_h, nex_f, var)
+            panels.append(("NEX Δ", dmap))
+        else:
+            _, dm = spatial_delta_maps(nex_h, nex_f, var)
+            LATn, LONn = get_nex_validation_mesh(lat_tgt, lon_tgt)
+            d_on_loca = interp_curvilinear_stack_to_target(
+                dm[np.newaxis, ...], LATn, LONn, LAT2, LON2
+            )[0]
+            panels.append(("NEX Δ (on LOCA grid)", d_on_loca))
+    except (FileNotFoundError, OSError) as e:
+        print(f"  NEX Δ skip: {e}")
+
+    return panels
+
+
 def _plot_delta_row(panels: list[tuple[str, np.ndarray]], var: str, out_path: Path) -> None:
     n = len(panels)
     if n == 0:
@@ -342,28 +455,33 @@ def _plot_delta_row(panels: list[tuple[str, np.ndarray]], var: str, out_path: Pa
     print(f"Wrote {out_path}")
 
 
-def run_delta_maps(var: str) -> None:
-    panels = _delta_panels(var)
+def run_delta_maps(var: str, suite: str, fig_delta: Path) -> None:
+    panels = _delta_panels_dispatch(var, suite)
     suf = f"{cfg.SIGNAL_HIST_START[:4]}_{cfg.SIGNAL_FUT_END[:4]}"
-    _plot_delta_row(panels, var, FIG_DELTA / f"delta_maps_{var}_{suf}.png")
+    _plot_delta_row(panels, var, fig_delta / f"delta_maps_{var}_{suf}.png")
 
 
-def write_html_index() -> None:
+def write_html_index(plots_root: Path, suite: str) -> None:
     paths: list[Path] = []
-    for base in (FIG_HIST, FIG_VAL, FIG_DELTA):
+    for base in (
+        plots_root / "hist_1981_2014",
+        plots_root / "validation_2006_2014",
+        plots_root / "delta_future_minus_hist",
+    ):
         if base.is_dir():
             paths.extend(sorted(base.rglob("*.png")))
     if not paths:
         return
+    title = f"6-product-comparison — {gs.suite_label_for_titles(suite)}"
     lines = [
         "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Climate signal figures</title></head><body>",
-        "<h1>6-product-comparison — 4km_plots figures</h1><ul>",
+        f"<h1>{html.escape(title)}</h1><ul>",
     ]
     for p in paths:
-        rel = p.relative_to(cfg.FIG_4KM_PLOTS)
+        rel = p.relative_to(plots_root)
         lines.append(f"<li><a href='{html.escape(str(rel.as_posix()))}'>{html.escape(rel.name)}</a></li>")
     lines.append("</ul></body></html>")
-    idx = cfg.FIG_4KM_PLOTS / "index.html"
+    idx = plots_root / "index.html"
     idx.parent.mkdir(parents=True, exist_ok=True)
     idx.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {idx}")
@@ -372,6 +490,11 @@ def write_html_index() -> None:
 def main() -> int:
     p = argparse.ArgumentParser(description="Multi-product comparison plots (hist / val / delta)")
     p.add_argument("--vars", default=",".join(cfg.VARS), help="Comma-separated variables")
+    p.add_argument(
+        "--suite",
+        default=gs.SUITE_GRIDMET_4KM,
+        help=f"DOR_BENCHMARK_SUITE ({', '.join(sorted(gs.VALID_SUITES))})",
+    )
     p.add_argument("--hist", action="store_true", help="1981-2014 figure family")
     p.add_argument("--val", action="store_true", help="2006-2014 figure family")
     p.add_argument("--delta", action="store_true", help="climate-change delta maps (future minus historical)")
@@ -383,33 +506,37 @@ def main() -> int:
     if not (do_hist or do_val or do_delta):
         do_hist = do_val = do_delta = True
 
+    os.environ["DOR_BENCHMARK_SUITE"] = args.suite.strip()
+    suite = gs.benchmark_suite()
+    fig_hist, fig_val, fig_delta, plots_root = _figure_roots(suite)
+
     try:
         load_target_grid(cfg.CROPPED_GRIDMET, year=2006)
     except FileNotFoundError as e:
         print(f"Need GridMET reference NPZ (CROPPED_GRIDMET): {e}")
         return 1
 
-    cfg.FIG_4KM_PLOTS.mkdir(parents=True, exist_ok=True)
+    plots_root.mkdir(parents=True, exist_ok=True)
     for var in [x.strip() for x in args.vars.split(",") if x.strip()]:
         if do_hist:
             try:
-                run_hist_plots(var)
+                run_hist_plots(var, suite, fig_hist)
             except Exception as e:
                 print(f"hist {var}: {e}")
         if do_val:
             try:
-                run_val_plots(var)
+                run_val_plots(var, suite, fig_val)
             except Exception as e:
                 print(f"val {var}: {e}")
         if do_delta:
             try:
-                run_delta_maps(var)
+                run_delta_maps(var, suite, fig_delta)
             except Exception as e:
                 print(f"delta {var}: {e}")
         gc.collect()
 
     if args.all or do_hist or do_val or do_delta:
-        write_html_index()
+        write_html_index(plots_root, suite)
     return 0
 
 

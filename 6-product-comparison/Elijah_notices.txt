@@ -1,0 +1,14 @@
+I'm noticing something interesting in our pr plots, over the full historical period (1982-2014). I’m mostly referring to ‘out output’ as test8_v3/test8_v4, which look similar. Test8_v2 looks like v3 and v4 but blurrier. I'm particularly looking at full and seasonal time-mean plots, not snapshots, since day to day is always a shitshow. In these time-mean plots, I'm noticing a trend, which is that LOCA2 sometimes looks more like GridMet than us. NEX always just looks blurry (probably because it’s interpolated from a much higher resolution). In general, this is how it looks: in each plot, there's a large spot in GridMet of high precipitation - we usually match that quite well, and so does LOCA2, we usually do it a little better. But in the rest of the plot, we have lots of tiny 'spots' of high precipitation, all over. LOCA2 seems to have a slightly more realistic, slightly smoother 'gradient' across the plot that often matches GridMet quite well. This all seems consistent with the fact that over the plotted area and entire historical period, the average precipitation is higher for our v4 output than it is for LOCA2 (2.501 vs 2.396 mm/d).
+
+DJF: GridMet here is concentrated in the bottom right, with a smoothish gradient moving towards the top left. LOCA2 looks just about perfectly like GridMet, ours looks just a little bit more splotchy. Keep in mind, these splotches I’m referring to are very small, not large spatial differences. 
+
+JJA: GridMet is pretty messy, lots of extreme precipitation with a slightly higher concentration in the middle. Ours looks better, LOCA2 is a little bit too concentrated in the bottom left.
+
+MAM: GridMet is concentrated at the bottom of the plot. The rest is fairly smooth, with less precipitation at the top and on the left and right edges. Any irregular spots of high or low precipitation are tiny and not too extreme. LOCA2 looks very similar, whereas our irregular spots are slightly larger and of higher precipitation. Our extremes are more spread out throughout the plot. 
+
+SON: GridMet is concentrated at the bottom much like MAM, but the spread across the rest of the plot is a little different. There is more area with lower precipitation, on the left side and middle of the plot. There is an area of higher precipitation (not as extreme as the area as the patch at the bottom) fading from the top right. LOCA2 looks similar, although their extreme patch at the bottom is a little bit of a different shape - taller and less wide. Our output here has the same recurring problem I described for 
+
+MAM - our irregular spots are slightly larger and of higher precipitation. Our extremes are more spread out throughout the plot. 
+
+The plots for the entire time-mean look kinda like they did for MAM. 
+Investigate what LOCA2 is doing, what we’re doing, and analyze what you think (true!) culprit for this apparent loss to LOCA2 is. 
