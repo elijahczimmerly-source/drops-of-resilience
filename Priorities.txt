@@ -1,7 +1,5 @@
 ACTIVE:
 
-redo all benchmarks but at LOCA2 and NEX resolution (~6km, ~25-28km)
-
 
 
 
